@@ -163,19 +163,19 @@ module Application =
 //     | Decrement -> { state with Count = state.Count - 1 }, Cmd.none
 
   let render (sheet: Sheet) (trigger: Event -> unit) =
-      Html.div [
-          Html.button [
-              //prop.onClick (fun _ -> dispatch Increment)
-              prop.text "Increment"
-          ]
-
-          Html.button [
-              //prop.onClick (fun _ -> dispatch Decrement)
-              prop.text "Decrement"
-          ]
-
-          //Html.h1 state.Count
+    Html.div [
+      Html.button [
+          //prop.onClick (fun _ -> dispatch Increment)
+          prop.text "Increment"
       ]
+
+      Html.button [
+          //prop.onClick (fun _ -> dispatch Decrement)
+          prop.text "Decrement"
+      ]
+
+      //Html.h1 state.Count
+    ]
 
 
   let initialize () =
