@@ -8,6 +8,7 @@ namespace Loglo
 module Application =
   open Elmish
   open Feliz
+  open Feliz.Bulma
 
   open Domain
 
@@ -80,12 +81,15 @@ module Application =
 
   let renderEditor dispatch pos (value:string) =
     Html.td [
-      Html.input [
-        prop.className ["selected"]
-        prop.autoFocus true
-        prop.onChange (fun (e:string) -> dispatch (UpdateValue(pos, e))) // only update on exit
-        //prop.onInput (fun e -> dispatch(UpdateValue(pos, (e.currentTarget :?> Browser.Types.HTMLInputElement).value)))
-        prop.value value ]
+      //prop.style [style.borderBottomColor "blue"]
+      prop.children [
+        Html.input [
+          prop.className ["cellInput"; "input"]
+          prop.autoFocus true
+          prop.onChange (fun (e:string) -> dispatch (UpdateValue(pos, e))) // only update on exit
+          //prop.onInput (fun e -> dispatch(UpdateValue(pos, (e.currentTarget :?> Browser.Types.HTMLInputElement).value)))
+          prop.value value ]
+      ]
     ]
 
   let renderValue dispatch pos cell =
@@ -112,6 +116,7 @@ module Application =
           | _, Child-> style.backgroundColor "AliceBlue"
           | Nil, _ -> style.backgroundColor "White"
           | _, _-> style.backgroundColor "LightYellow"]
+        prop.width 150
         prop.onClick (fun _ -> dispatch(StartEdit(pos)) ) 
         prop.text (content cell) ]
 
@@ -123,21 +128,34 @@ module Application =
       renderValue dispatch pos cell
 
   let render sheet dispatch =
-    let empty = Html.td []
-    let header (h:string) = Html.th [prop.style [style.backgroundColor "#D3D3D3"];  prop.text h]
-    let headers = sheet.Cols |> List.map (string >> header) 
-    let headers = empty::headers
+    let topLeft = Html.td [prop.width 50]
+    let colLabel (h:string) = Html.th [prop.width 150; prop.style [style.backgroundColor "#D3D3D3"];  prop.text h]
+    let rowLabel (h:string) = Html.th [prop.style [style.backgroundColor "#D3D3D3"];  prop.text h]
+    let colHeaders = [Html.tr (topLeft::(sheet.Cols |> List.map (string >> colLabel)))]
 
     let cells n =
       let cells = sheet.Cols |> List.mapi (fun i h -> renderCell dispatch (Position (h, n)) sheet)
-      header (string n) :: cells
+      rowLabel (string n) :: cells
     let rows = sheet.Rows |> List.map (cells >> Html.tr) 
 
-    Html.table  [
-      Html.thead [Html.tr headers]
-      Html.tbody rows
-    ]
+    Html.div [
+      prop.width 100
+      prop.children [
+        Bulma.button.a [
+          color.isWarning
+          prop.onClick (fun _ -> Fable.Core.JS.eval "alert('Hello Feliz.Bulma')" |> ignore)
+          prop.text "Amazing button, ain't it?"
+        ]
 
+        Bulma.table [
+          table.isFullWidth
+          table.isBordered
+          prop.children [
+            Html.thead colHeaders
+            Html.tbody rows]
+        ]
+      ]
+    ]
   let initialize () =
     { Cols = ['A' .. 'E']
       Rows = [1 .. 5]
