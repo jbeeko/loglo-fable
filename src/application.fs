@@ -6,24 +6,16 @@ namespace Loglo
 
 
 module Application =
-
   open Elmish
   open Feliz
-
-  //open Elmish.React
-  //open Fable.Helpers.React
-  //open Fable.Helpers.React.Props
-  //open Fable.Core.JsInterop
-
-
 
   open Domain
 
 
   // ----------------------------------------------------------------------------
-  // EVENT HANDLING
+  // MESSAGE HANDLING
   // ----------------------------------------------------------------------------
-  type Event =
+  type Message =
     | StartEdit of Position
     | UpdateValue of Position * string
 
@@ -62,7 +54,7 @@ module Application =
     | Error (p,e) -> "Error"
     | Nil -> "nil"
 
-  let errorMsg (p, e) =
+  let errorMsg (_, e) =
     match e with
     | StackUnderflow (expected, given) ->
         sprintf "Need %i values but given %i." expected given
@@ -86,97 +78,65 @@ module Application =
     | FilledCellOverwritten -> "Filled cells can't be edited."
     | _ -> e.ToString()
 
-  // let renderEditor (trigger:Event -> unit) pos value =
-  //   td [ Class "selected"] [
-  //     input [
-  //       AutoFocus true
-  //       OnChange ignore
-  //       OnInput (fun e -> trigger(UpdateValue(pos, e.target?value)))
-  //       Value value ]
-  //   ]
-
-  // let renderValue trigger pos (cell: Cell) =
-  //   // TODO - should draw Paths as SVG on a canvas, others as str
-  //   // TODO - split cell, with stack and value below, any SVG above
-  //   //        This will give more context.
-  //   let content cell =
-  //     let value =
-  //       match (Cell.value cell) with
-  //       | Int i as v -> printValue v
-  //       | Text s as v -> printValue v
-  //       | Code _ as v -> printValue v
-  //       | Name s as v -> printValue v
-  //       | Paths p as v -> printValue v
-  //       | Error (p, e) ->
-  //           if p = pos then errorMsg (p, e) else "ERR"
-  //       | Nil -> ""
-  //     value
-
-  //   td
-  //     [
-  //       Style (
-  //         match Cell.value cell, cell.Type with
-  //         | Error _, _ -> [Background "#FFB0B0"]
-  //         | _, Child-> [Background "AliceBlue"]
-  //         | Nil, _ -> [Background "White"]
-  //         | _, _-> [Background "LightYellow"])
-  //       OnClick (fun _ -> trigger(StartEdit(pos)) ) ]
-  //     [ str (content cell) ]
-
-  // let renderCell trigger pos sheet =
-  //   let cell = Sheet.find pos sheet
-  //   if sheet.Active = Some pos then
-  //     renderEditor trigger pos cell.Input
-  //   else
-  //     renderValue trigger pos cell
-
-  // let render sheet trigger =
-  //   let empty = td [] []
-  //   let header h = th [Style ([Background "#D3D3D3"])] [str h]
-  //   let headers = sheet.Cols |> List.map (fun h -> header (string h))
-  //   let headers = empty::headers
-
-  //   let cells n =
-  //     let cells = sheet.Cols |> List.mapi (fun i h -> renderCell trigger (Position (h, n)) sheet)
-  //     header (string n) :: cells
-  //   let rows = sheet.Rows |> List.map (fun r -> tr [] (cells r))
-
-  //   table [] [
-  //     tr [] headers
-  //     tbody [] rows
-  //   ]
-
-// open Feliz
-// open Elmish
-
-// type State = { Count: int }
-
-// type Msg =
-//     | Increment
-//     | Decrement
-
-// let init() = { Count = 0 }, Cmd.none
-
-// let update (msg: Msg) (state: State) =
-//     match msg with
-//     | Increment -> { state with Count = state.Count + 1 }, Cmd.none
-//     | Decrement -> { state with Count = state.Count - 1 }, Cmd.none
-
-  let render (sheet: Sheet) (trigger: Event -> unit) =
-    Html.div [
-      Html.button [
-          //prop.onClick (fun _ -> dispatch Increment)
-          prop.text "Increment"
-      ]
-
-      Html.button [
-          //prop.onClick (fun _ -> dispatch Decrement)
-          prop.text "Decrement"
-      ]
-
-      //Html.h1 state.Count
+  let renderEditor dispatch pos (value:string) =
+    Html.td [
+      Html.input [
+        prop.className ["selected"]
+        prop.autoFocus true
+        prop.onChange (fun (e:string) -> dispatch (UpdateValue(pos, e))) // only update on exit
+        //prop.onInput (fun e -> dispatch(UpdateValue(pos, (e.currentTarget :?> Browser.Types.HTMLInputElement).value)))
+        prop.value value ]
     ]
 
+  let renderValue dispatch pos cell =
+    // TODO - should draw Paths as SVG on a canvas, others as str
+    // TODO - split cell, with stack and value below, any SVG above
+    //        This will give more context.
+    let content cell =
+      let value =
+        match (Cell.value cell) with
+        | Int i as v -> printValue v
+        | Text s as v -> printValue v
+        | Code _ as v -> printValue v
+        | Name s as v -> printValue v
+        | Paths p as v -> printValue v
+        | Error (p, e) ->
+            if p = pos then errorMsg (p, e) else "ERR"
+        | Nil -> ""
+      value
+
+    Html.td [
+        prop.style [
+          match Cell.value cell, cell.Type with
+          | Error _, _ -> style.backgroundColor "#FFB0B0"
+          | _, Child-> style.backgroundColor "AliceBlue"
+          | Nil, _ -> style.backgroundColor "White"
+          | _, _-> style.backgroundColor "LightYellow"]
+        prop.onClick (fun _ -> dispatch(StartEdit(pos)) ) 
+        prop.text (content cell) ]
+
+  let renderCell dispatch pos sheet =
+    let cell = Sheet.find pos sheet
+    if sheet.Active = Some pos then 
+      renderEditor dispatch pos cell.Input
+    else 
+      renderValue dispatch pos cell
+
+  let render sheet dispatch =
+    let empty = Html.td []
+    let header (h:string) = Html.th [prop.style [style.backgroundColor "#D3D3D3"];  prop.text h]
+    let headers = sheet.Cols |> List.map (string >> header) 
+    let headers = empty::headers
+
+    let cells n =
+      let cells = sheet.Cols |> List.mapi (fun i h -> renderCell dispatch (Position (h, n)) sheet)
+      header (string n) :: cells
+    let rows = sheet.Rows |> List.map (cells >> Html.tr) 
+
+    Html.table  [
+      Html.thead [Html.tr headers]
+      Html.tbody rows
+    ]
 
   let initialize () =
     { Cols = ['A' .. 'E']
