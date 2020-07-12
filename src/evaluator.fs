@@ -199,7 +199,7 @@ module Domain =
               (fun (p, s) j -> down p, insertFilled pos p s j)
               (down pos, sheet')
           |> snd
-      | _ -> error ((InvalidParams ("Fill", [Some ((Int 0), "> 0"); None; None], [count; firstVal; otherVal]))) pos sheet
+      | _ -> error ((InvalidParams ("fill", [Some ((Int 0), "> 0"); None; None], [count; firstVal; otherVal]))) pos sheet
 
     // Arithmetic primatives
     let add pos sheet =

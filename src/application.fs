@@ -8,7 +8,6 @@ namespace Loglo
 module Application =
   open Elmish
   open Feliz
-  open Feliz.Bulma
 
   open Domain
 
@@ -58,35 +57,37 @@ module Application =
   let errorMsg (_, e) =
     match e with
     | StackUnderflow (expected, given) ->
-        sprintf "Need %i values but given %i." expected given
-    | ParseFailure s -> sprintf "%s is not understood." s
+        sprintf "Err: need %i values but given %i." expected given
+    | ParseFailure s -> sprintf "Err: %s is giberish" s
     | ReferenceCycle (Position(c,r)::t) ->
         let cycle =
           List.fold (fun s (Position (c, r)) -> s + (sprintf " to %c%i" c r)) "" t
-        sprintf "Loop: %c%i %s" c r cycle
-    | SelfReference -> "Self reference."
-    | DivideByZero i -> sprintf "%i is divided by zero." i
+        sprintf "Err: loop %c%i %s" c r cycle
+    | SelfReference -> "Err: points to self"
+    | DivideByZero i -> sprintf "Err: %i/0" i
     | MissingDefinition s ->
-        sprintf "The %s is not a Loglo word nor a user defined one." s
+        sprintf "Err: %s is not defined" s
     | ReferenceOffSheet (Position (c, r)) ->
-        sprintf "Position %c%i is off the sheet." c r
+        sprintf "Err: %c%i is off the sheet" c r
     | InvalidParams (op, expected, given) ->
         let expected = System.String.Join(", ", List.map printType expected)
         let given = System.String.Join(", ", List.map printValue given)
         sprintf "%s needs (%s) but given  (%s)." op expected given
-    | MissingItem (Position (c, r)) -> sprintf "%c%i is empty." c r
-    | NotImplemented s -> sprintf "%s is reserved by Loglo." s
-    | FilledCellOverwritten -> "Filled cells can't be edited."
+    | MissingItem (Position (c, r)) -> sprintf "Err: %c%i is empty." c r
+    | NotImplemented s -> sprintf "Err: %s is reserved by Loglo." s
+    | FilledCellOverwritten -> "Err: read only"
     | _ -> e.ToString()
 
   let renderEditor dispatch pos (value:string) =
     Html.td [
-      //prop.style [style.borderBottomColor "blue"]
+      prop.style [style.padding 0]
       prop.children [
         Html.input [
-          prop.className ["cellInput"; "input"]
+          prop.className [Bulma.Input]
+          prop.style [style.borderRadius 0]
           prop.autoFocus true
-          prop.onChange (fun (e:string) -> dispatch (UpdateValue(pos, e))) // only update on exit
+          prop.type'.text
+          prop.onTextChange (fun e -> dispatch (UpdateValue(pos, e))) // only update on exit
           //prop.onInput (fun e -> dispatch(UpdateValue(pos, (e.currentTarget :?> Browser.Types.HTMLInputElement).value)))
           prop.value value ]
       ]
@@ -105,7 +106,7 @@ module Application =
         | Name s as v -> printValue v
         | Paths p as v -> printValue v
         | Error (p, e) ->
-            if p = pos then errorMsg (p, e) else "ERR"
+            if p = pos then errorMsg (p, e) else "Err"
         | Nil -> ""
       value
 
@@ -116,7 +117,6 @@ module Application =
           | _, Child-> style.backgroundColor "AliceBlue"
           | Nil, _ -> style.backgroundColor "White"
           | _, _-> style.backgroundColor "LightYellow"]
-        prop.width 150
         prop.onClick (fun _ -> dispatch(StartEdit(pos)) ) 
         prop.text (content cell) ]
 
@@ -128,10 +128,29 @@ module Application =
       renderValue dispatch pos cell
 
   let render sheet dispatch =
-    let topLeft = Html.td [prop.width 50]
-    let colLabel (h:string) = Html.th [prop.width 150; prop.style [style.backgroundColor "#D3D3D3"];  prop.text h]
-    let rowLabel (h:string) = Html.th [prop.style [style.backgroundColor "#D3D3D3"];  prop.text h]
-    let colHeaders = [Html.tr (topLeft::(sheet.Cols |> List.map (string >> colLabel)))]
+    let topLeft = Html.td [prop.style [style.width 40]]
+    let colLabel (h:string) = Html.th [prop.style [style.backgroundColor "LightGray"];  prop.text h]
+    let rowLabel (h:string) = Html.th [prop.style [style.textAlign.right; style.backgroundColor "LightGray"];  prop.text h]
+    let colHeaders = Html.tr (topLeft::(sheet.Cols |> List.map (string >> colLabel)))
+    let editHeaders = Html.tr [
+        topLeft
+        Html.td [prop.text "In: [1 2 3]"; prop.colSpan 2]
+        Html.td [
+          prop.style [style.padding 0]
+          prop.colSpan (sheet.Cols.Length - 4)
+          prop.children [
+            Html.input [
+              prop.className [Bulma.Input]
+              prop.style [style.borderRadius 0]
+              prop.autoFocus true
+              prop.type'.text
+              //prop.onTextChange (fun e -> dispatch (UpdateValue(pos, e))) // only update on exit
+              //prop.onInput (fun e -> dispatch(UpdateValue(pos, (e.currentTarget :?> Browser.Types.HTMLInputElement).value)))
+              //prop.value value 
+              ]
+          ]
+          ]
+        Html.td [prop.text "Out: [1 5]"; prop.colSpan 2]]
 
     let cells n =
       let cells = sheet.Cols |> List.mapi (fun i h -> renderCell dispatch (Position (h, n)) sheet)
@@ -139,26 +158,25 @@ module Application =
     let rows = sheet.Rows |> List.map (cells >> Html.tr) 
 
     Html.div [
-      prop.width 100
+      prop.style [style.margin 10; style.borderStyle.solid  ; style.borderWidth 1; style.borderColor "DarkGray"]
       prop.children [
-        Bulma.button.a [
-          color.isWarning
-          prop.onClick (fun _ -> Fable.Core.JS.eval "alert('Hello Feliz.Bulma')" |> ignore)
-          prop.text "Amazing button, ain't it?"
-        ]
-
-        Bulma.table [
-          table.isFullWidth
-          table.isBordered
+        Html.table [
+          prop.style [style.tableLayout.fixed']
+          prop.classes [
+            Bulma.Table 
+            Bulma.IsFullwidth
+            Bulma.IsBordered
+          ]
           prop.children [
-            Html.thead colHeaders
+            Html.thead [editHeaders; colHeaders]
             Html.tbody rows]
         ]
       ]
     ]
+
   let initialize () =
-    { Cols = ['A' .. 'E']
-      Rows = [1 .. 5]
+    { Cols = ['A' .. 'J']
+      Rows = [1 .. 10]
       Active = None
       Definitions = Map.empty
       Cells = Map.empty },

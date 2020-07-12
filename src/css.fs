@@ -1,4 +1,4 @@
-namespace Feliz.Recoil.DataSheet
+namespace Loglo
 
 open Zanaptak.TypedCssClasses
 
