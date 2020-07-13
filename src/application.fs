@@ -82,80 +82,20 @@ module Application =
     | FilledCellOverwritten -> "Err: read only"
     | _ -> e.ToString()
 
-  let topLeft = Html.td [prop.style [style.width 40]]
-  let renderEditBar dispatch sheet =
-    match sheet.Active with
-    | Some (pos, cell) -> 
-      Html.tr [
-        topLeft
-        Html.td [
-          let stack = Sheet.findStackLeft pos sheet
-          let txt = System.String.Join(", ", stack |> List.rev |> List.map printValue)
-          prop.colSpan 1
-          prop.text (sprintf "[%s" txt)
-          prop.style [style.textAlign.right]]
-        Html.td [
-          prop.style [style.padding 0]
-          prop.colSpan (sheet.Cols.Length - 7)
-          prop.children [
-            Html.input [
-              prop.className [Bulma.Input]
-              prop.style [style.borderRadius 0]
-              prop.autoFocus true
-              prop.type'.text
-              prop.value cell.Input 
-              prop.onKeyDown (fun e -> 
-                let nextPos =
-                  match e.key with
-                  | "Enter" | "ArrowDown" -> Some (Position.down pos)
-                  | "Tab" -> e.preventDefault(); Some (Position.right pos)
-                  | "ArrowRight" -> Some (Position.right pos)
-                  | "ArrowLeft" -> Some (Position.left pos)
-                  | "ArrowUp" -> Some (Position.up pos)
-                  | _ -> None
-                match nextPos with
-                | Some p when Sheet.contains p sheet-> 
-                  let c = Sheet.find p sheet
-                  dispatch (StartEdit (p, c))
-                | _ -> ())
 
-              prop.onTextChange (fun e -> 
-                dispatch (UpdateCells(pos, e))) // dispatch on value accepted 
-              prop.onInput (fun e ->            // dispatch on each keystroke
-                let txt = (e.currentTarget :?> Browser.Types.HTMLInputElement).value
-                match txt.Trim() with
-                | "" -> ()
-                | _ -> dispatch(UpdateActiveValue(pos, txt)))]]]
-        Html.td [
-          let stack =
-            match cell.Input.Trim() with
-            | "" -> Sheet.findStackLeft pos sheet
-            | _ -> cell.Stack
-          let txts = 
-            stack |> List.rev 
-            |> List.map (fun v -> match v with | Error (p, e) -> sprintf "(%s)" (errorMsg (p, e)) | _ -> printValue v)
-          let txt = System.String.Join(", ", txts)
-          prop.colSpan 6
-          prop.text (sprintf "[%s" txt)]]
-      | None -> 
-        Html.tr [
-          topLeft
-          Html.td [prop.text "[ "; prop.colSpan 1; prop.style [style.textAlign.right]]
-          Html.td [prop.colSpan (sheet.Cols.Length - 7)]
-          Html.td [prop.text "[ "; prop.colSpan 6]]
-
-  let renderCellEditor dispatch sheet =
+  let renderCellEditor colSpan dispatch sheet =
     match sheet.Active with
     | Some (pos, cell) ->
       Html.td [
         prop.style [style.padding 0]
+        prop.colSpan colSpan
         prop.children [
           Html.input [
             prop.className [Bulma.Input]
             prop.style [style.borderRadius 0]
             prop.autoFocus true
             prop.type'.text
-            prop.defaultValue cell.Input
+            prop.value cell.Input
             prop.onKeyDown (fun e -> 
               let nextPos =
                 match e.key with
@@ -180,6 +120,42 @@ module Application =
               //   | "" -> () // dispatching empty text ends edit
               //   | _ -> dispatch(UpdateActiveValue(pos, txt)))]]]
     | None -> failwith "should not happen"
+
+  let topLeft = Html.td [prop.style [style.width 40]]
+  let renderEditBar dispatch sheet =
+    match sheet.Active with
+    | Some (pos, cell) -> 
+      Html.tr [
+        topLeft
+        // Pre stack
+        Html.td [
+          let stack = Sheet.findStackLeft pos sheet
+          let txt = System.String.Join(", ", stack |> List.rev |> List.map printValue)
+          prop.colSpan 1
+          prop.text (sprintf "[%s" txt)
+          prop.style [style.textAlign.right]]
+        
+        renderCellEditor (sheet.Cols.Length - 7) dispatch sheet
+
+        // Post stack
+        Html.td [
+          let stack =
+            match cell.Input.Trim() with
+            | "" -> Sheet.findStackLeft pos sheet
+            | _ -> cell.Stack
+          let txts = 
+            stack |> List.rev 
+            |> List.map (fun v -> match v with | Error (p, e) -> sprintf "(%s)" (errorMsg (p, e)) | _ -> printValue v)
+          let txt = System.String.Join(", ", txts)
+          prop.colSpan 6
+          prop.text (sprintf "[%s" txt)]]
+      | None -> 
+        Html.tr [
+          topLeft
+          Html.td [prop.text "[ "; prop.colSpan 1; prop.style [style.textAlign.right]]
+          Html.td [prop.colSpan (sheet.Cols.Length - 7)]
+          Html.td [prop.text "[ "; prop.colSpan 6]]
+
 
   let renderValue dispatch pos cell =
     // TODO - should draw Paths as SVG on a canvas, others as str
@@ -211,8 +187,7 @@ module Application =
   let renderCell dispatch pos sheet =
     let cell = Sheet.find pos sheet
     if sheet.Active = Some (pos, cell) then 
-      //renderCellEditor dispatch pos cell.Input
-      renderCellEditor dispatch sheet
+      renderCellEditor 1 dispatch sheet
     else 
       renderValue dispatch pos cell
 
