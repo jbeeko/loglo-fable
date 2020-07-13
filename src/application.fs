@@ -248,7 +248,7 @@ module Application =
 
   let initialize () =
     { Cols = ['A' .. 'J']
-      Rows = [1 .. 10]
+      Rows = [1 .. 20]
       Active = None
       Definitions = Map.empty
       Cells = Map.empty },
