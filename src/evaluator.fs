@@ -106,7 +106,7 @@ module Domain =
   type Sheet = {
     Rows : int list
     Cols : char list
-    Active : Position option
+    Active : (Position*Cell) option
     Cells : Map<Position, Cell>
     Definitions : Map<Value, Value>
   }
@@ -131,6 +131,16 @@ module Domain =
       | Some c -> c
       | None -> Cell.empty
 
+    let rec findStackLeft pos sheet =
+      let pos' = Position.left pos
+      if contains pos' sheet
+      then
+        match Map.tryFind pos' sheet.Cells with
+        | Some c -> c.Stack
+        //| None -> [] // If a blank cell should interrupt the stack
+        | None -> findStackLeft pos' sheet
+      else []
+    
     let delete pos sheet =
       if Map.containsKey pos sheet.Cells
       then {sheet with Cells = Map.remove pos sheet.Cells}
@@ -165,6 +175,10 @@ module Domain =
     let dup pos sheet =
       let cell = find pos sheet
       upsert pos sheet (Cell.dup cell)
+
+    let drop pos sheet =
+      let cell = find pos sheet
+      upsert pos sheet (Cell.drop cell)
 
     let swap pos sheet =
       let cell = find pos sheet
@@ -314,6 +328,7 @@ module Evaluator =
     match prim.ToString().ToLower() with
     // Stack & Language primatives
     | "dup" -> dup pos sheet
+    | "drop" -> drop pos sheet
     | "swap" -> swap pos sheet
     | "def" -> def pos sheet
     | "fill" -> fill pos sheet
@@ -336,15 +351,6 @@ module Evaluator =
   // Parse new cell input and evaluate the parsed expressions. Set the stack to
   // the that of the cell to the left. Delete empty cells
   let private parseEvaluateCell pos sheet =
-    let rec findStackLeft pos sheet =
-      let pos' = Position.left pos
-      if contains pos' sheet
-      then
-        match Map.tryFind pos' sheet.Cells with
-        | Some c -> c.Stack
-        //| None -> [] // If a blank cell should interrupt the stack
-        | None -> findStackLeft pos' sheet
-      else []
     let setStack pos sheet  =
       let cell = find pos sheet
       let stack = findStackLeft pos sheet
@@ -368,20 +374,26 @@ module Evaluator =
 
     let sheet' = parseEvaluateCell pos sheet
     let visited' = Set.add pos visited
-    printfn "%A" sheet'
-    printfn "%A" (dependants pos sheet')
     dependants pos sheet'
     |> List.fold (fun s p ->
       if Set.contains p visited
       then s
       else basicRecalc (Set.add p visited') p s) sheet'
 
-  // Public API - insert a new cell and re-calculate the sheet
-  let recalc pos sheet input =
+  // Public API - insert a new cell and either re-calculate the sheet or
+  // just the active cell.
+  let recalc pos sheet cellOnly input =
+    printfn "input :%s cellOnly %b" input cellOnly
     let update pos sheet input =
       let deps =
         if contains (left pos) sheet then [left pos]
         else []
       upsert pos sheet {Input = input; Stack = []; DependsOn = deps; Type = Input}
-
-    basicRecalc (Set.empty) pos (update pos sheet input)
+    if cellOnly 
+      then 
+        let sheet' = parseEvaluateCell pos (update pos sheet input)
+        let cell = Sheet.find pos sheet'
+        let sheet'' = {sheet with Active = Some (pos, {cell with Input = input})}
+        printfn "%A" sheet''
+        sheet''
+      else basicRecalc (Set.empty) pos (update pos sheet input)

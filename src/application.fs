@@ -16,16 +16,20 @@ module Application =
   // MESSAGE HANDLING
   // ----------------------------------------------------------------------------
   type Message =
-    | StartEdit of Position
-    | UpdateValue of Position * string
+    | StartEdit of (Position*Cell)
+    | UpdateCells of Position * string
+    | UpdateActiveValue of Position * string
 
   let update msg sheet =
     match msg with
-    | StartEdit(pos) ->
-        { sheet with Active = Some pos }, Cmd.Empty
-    | UpdateValue(pos, value) ->
-        let sheet = Evaluator.recalc pos sheet value
+    | StartEdit active ->
+        { sheet with Active = Some active }, Cmd.Empty
+    | UpdateCells(pos, value) ->
+        let sheet = Evaluator.recalc pos sheet false value
         sheet, Cmd.Empty
+    | UpdateActiveValue(pos, value) ->
+        let sheet' = Evaluator.recalc pos sheet true value 
+        sheet', Cmd.Empty
 
 
   // ----------------------------------------------------------------------------
@@ -51,7 +55,7 @@ module Application =
     | Name s -> sprintf ":%s" s
     | Code l -> "{}"
     | Paths l -> sprintf "%i Paths" l.Length
-    | Error (p,e) -> "Error"
+    | Error (p,e) -> "Err"
     | Nil -> "nil"
 
   let errorMsg (_, e) =
@@ -72,13 +76,58 @@ module Application =
     | InvalidParams (op, expected, given) ->
         let expected = System.String.Join(", ", List.map printType expected)
         let given = System.String.Join(", ", List.map printValue given)
-        sprintf "%s needs (%s) but given  (%s)." op expected given
+        sprintf "Err: %s needs (%s) but given  (%s)." op expected given
     | MissingItem (Position (c, r)) -> sprintf "Err: %c%i is empty." c r
     | NotImplemented s -> sprintf "Err: %s is reserved by Loglo." s
     | FilledCellOverwritten -> "Err: read only"
     | _ -> e.ToString()
 
-  let renderEditor dispatch pos (value:string) =
+  let topLeft = Html.td [prop.style [style.width 40]]
+  let renderEditBar dispatch sheet =
+    match sheet.Active with
+    | Some (pos, cell) -> 
+      //let cell = Sheet.find pos sheet
+      Html.tr [
+        topLeft
+        Html.td [
+          let stack = Sheet.findStackLeft pos sheet
+          let txt = System.String.Join(", ", stack |> List.rev |> List.map printValue)
+          prop.colSpan 1
+          prop.text (sprintf "[%s" txt)
+          prop.style [style.textAlign.right]]
+        Html.td [
+          prop.style [style.padding 0]
+          prop.colSpan (sheet.Cols.Length - 6)
+          prop.children [
+            Html.input [
+              prop.className [Bulma.Input]
+              prop.style [style.borderRadius 0]
+              prop.autoFocus true
+              prop.type'.text
+              prop.value cell.Input 
+              prop.onTextChange (fun e -> 
+                printfn "change"
+                dispatch (UpdateCells(pos, e))) // dispatch on value accepted 
+              prop.onInput (fun e ->            // dispatch on each keystroke
+                let txt = (e.currentTarget :?> Browser.Types.HTMLInputElement).value
+                printfn "input %s" txt
+                dispatch(UpdateActiveValue(pos, txt)))]]]
+        Html.td [
+          prop.colSpan 5
+          let txts = 
+            cell.Stack |> List.rev 
+            |> List.map (fun v -> match v with | Error (p, e) -> errorMsg (p, e) | _ -> printValue v)
+          let txt = System.String.Join(", ", txts)
+          prop.text (sprintf "[%s" txt)]]
+      | None -> 
+        Html.tr [
+          topLeft
+          Html.td [prop.text "[ "; prop.colSpan 1; prop.style [style.textAlign.right]]
+          Html.td [prop.colSpan (sheet.Cols.Length - 6)]
+          Html.td [prop.text "[ "; prop.colSpan 5]]
+
+
+  let renderCellEditor dispatch pos (value:string) =
     Html.td [
       prop.style [style.padding 0]
       prop.children [
@@ -87,8 +136,7 @@ module Application =
           prop.style [style.borderRadius 0]
           prop.autoFocus true
           prop.type'.text
-          prop.onTextChange (fun e -> dispatch (UpdateValue(pos, e))) // only update on exit
-          //prop.onInput (fun e -> dispatch(UpdateValue(pos, (e.currentTarget :?> Browser.Types.HTMLInputElement).value)))
+          prop.onTextChange (fun e -> dispatch (UpdateCells(pos, e)))
           prop.value value ]
       ]
     ]
@@ -117,40 +165,23 @@ module Application =
           | _, Child-> style.backgroundColor "AliceBlue"
           | Nil, _ -> style.backgroundColor "White"
           | _, _-> style.backgroundColor "LightYellow"]
-        prop.onClick (fun _ -> dispatch(StartEdit(pos)) ) 
+        prop.onClick (fun _ -> dispatch(StartEdit(pos, cell))) 
         prop.text (content cell) ]
 
   let renderCell dispatch pos sheet =
     let cell = Sheet.find pos sheet
-    if sheet.Active = Some pos then 
-      renderEditor dispatch pos cell.Input
+    if sheet.Active = Some (pos, cell) then 
+      renderCellEditor dispatch pos cell.Input
     else 
       renderValue dispatch pos cell
 
   let render sheet dispatch =
-    let topLeft = Html.td [prop.style [style.width 40]]
+
+    let editBar = renderEditBar dispatch sheet
+
     let colLabel (h:string) = Html.th [prop.style [style.backgroundColor "LightGray"];  prop.text h]
     let rowLabel (h:string) = Html.th [prop.style [style.textAlign.right; style.backgroundColor "LightGray"];  prop.text h]
     let colHeaders = Html.tr (topLeft::(sheet.Cols |> List.map (string >> colLabel)))
-    let editHeaders = Html.tr [
-        topLeft
-        Html.td [prop.text "In: [1 2 3]"; prop.colSpan 2]
-        Html.td [
-          prop.style [style.padding 0]
-          prop.colSpan (sheet.Cols.Length - 4)
-          prop.children [
-            Html.input [
-              prop.className [Bulma.Input]
-              prop.style [style.borderRadius 0]
-              prop.autoFocus true
-              prop.type'.text
-              //prop.onTextChange (fun e -> dispatch (UpdateValue(pos, e))) // only update on exit
-              //prop.onInput (fun e -> dispatch(UpdateValue(pos, (e.currentTarget :?> Browser.Types.HTMLInputElement).value)))
-              //prop.value value 
-              ]
-          ]
-          ]
-        Html.td [prop.text "Out: [1 5]"; prop.colSpan 2]]
 
     let cells n =
       let cells = sheet.Cols |> List.mapi (fun i h -> renderCell dispatch (Position (h, n)) sheet)
@@ -168,7 +199,7 @@ module Application =
             Bulma.IsBordered
           ]
           prop.children [
-            Html.thead [editHeaders; colHeaders]
+            Html.thead [editBar; colHeaders]
             Html.tbody rows]
         ]
       ]
