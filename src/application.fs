@@ -84,6 +84,20 @@ module Application =
 
 
   let renderCellEditor colSpan dispatch sheet =
+    // TODO - State machine for editing as follows:
+    // * on click
+    //    - no insertion point
+    //    - pointer is arrow
+    //    - field highlighted
+    //    - all existing text is implicitly selected so typeing deletes it all
+    //    - after typing insertion point is show
+    //    - right/left arrow keys navigate out of cell
+    // * on second click 
+    //    - insertion point shown at point of click
+    //    - pointer is bar
+    //    - right/left arrow keys navigate text
+    // NOTE: all the above is true for both the edit bar and the in cell editor
+
     match sheet.Active with
     | Some (pos, cell) ->
       Html.td [
