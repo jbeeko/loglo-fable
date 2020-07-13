@@ -98,6 +98,9 @@ module Application =
     //    - right/left arrow keys navigate text
     // NOTE: all the above is true for both the edit bar and the in cell editor
 
+    // TODO - highlight row/col of selection
+    // TODO - better emphasis of unfocused cell editor (border pixel width?)
+
     match sheet.Active with
     | Some (pos, cell) ->
       Html.td [
