@@ -138,7 +138,7 @@ module Application =
               //   | _ -> dispatch(UpdateActiveValue(pos, txt)))]]]
     | None -> failwith "should not happen"
 
-  let topLeft = Html.td [prop.style [style.width 40]]
+  let topLeft = Html.td [prop.style [style.width 45]]
   let renderEditBar dispatch sheet =
     match sheet.Active with
     | Some (pos, cell) -> 
