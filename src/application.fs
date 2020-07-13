@@ -104,6 +104,21 @@ module Application =
               prop.autoFocus true
               prop.type'.text
               prop.value cell.Input 
+              prop.onKeyDown (fun e -> 
+                let nextPos =
+                  match e.key with
+                  | "Enter" | "ArrowDown" -> Some (Position.down pos)
+                  | "Tab" -> e.preventDefault(); Some (Position.right pos)
+                  | "ArrowRight" -> Some (Position.right pos)
+                  | "ArrowLeft" -> Some (Position.left pos)
+                  | "ArrowUp" -> Some (Position.up pos)
+                  | _ -> None
+                match nextPos with
+                | Some p when Sheet.contains p sheet-> 
+                  let c = Sheet.find p sheet
+                  dispatch (StartEdit (p, c))
+                | _ -> ())
+
               prop.onTextChange (fun e -> 
                 dispatch (UpdateCells(pos, e))) // dispatch on value accepted 
               prop.onInput (fun e ->            // dispatch on each keystroke
@@ -140,7 +155,21 @@ module Application =
             prop.style [style.borderRadius 0]
             prop.autoFocus true
             prop.type'.text
-            prop.value cell.Input
+            prop.defaultValue cell.Input
+            prop.onKeyDown (fun e -> 
+              let nextPos =
+                match e.key with
+                | "Enter" | "ArrowDown" -> Some (Position.down pos)
+                | "Tab" -> e.preventDefault(); Some (Position.right pos)
+                | "ArrowRight" -> Some (Position.right pos)
+                | "ArrowLeft" -> Some (Position.left pos)
+                | "ArrowUp" -> Some (Position.up pos)
+                | _ -> None
+              match nextPos with
+              | Some p when Sheet.contains p sheet-> 
+                let c = Sheet.find p sheet
+                dispatch (StartEdit (p, c))
+              | _ -> ())
             prop.onTextChange (fun e -> 
               dispatch (UpdateCells(pos, e))) // dispatch on value accepted 
             prop.onInput (fun e ->            // dispatch on each keystroke
