@@ -173,14 +173,17 @@ module Domain =
 
     // Stack & Language primatives
     let dup pos sheet =
+      // TODO - error on empty stack
       let cell = find pos sheet
       upsert pos sheet (Cell.dup cell)
 
     let drop pos sheet =
+      // TODO - error on empty stack
       let cell = find pos sheet
       upsert pos sheet (Cell.drop cell)
 
     let swap pos sheet =
+      // TODO - error on stack with < 2 items
       let cell = find pos sheet
       upsert pos sheet (Cell.swap cell)
 
@@ -383,7 +386,6 @@ module Evaluator =
   // Public API - insert a new cell and either re-calculate the sheet or
   // just the active cell.
   let recalc pos sheet cellOnly input =
-    printfn "input :%s cellOnly %b" input cellOnly
     let update pos sheet input =
       let deps =
         if contains (left pos) sheet then [left pos]
@@ -394,6 +396,5 @@ module Evaluator =
         let sheet' = parseEvaluateCell pos (update pos sheet input)
         let cell = Sheet.find pos sheet'
         let sheet'' = {sheet with Active = Some (pos, {cell with Input = input})}
-        printfn "%A" sheet''
         sheet''
       else basicRecalc (Set.empty) pos (update pos sheet input)
