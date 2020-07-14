@@ -23,6 +23,9 @@ module Application =
   let update msg sheet =
     match msg with
     | StartEdit (pos, cell) ->
+      match cell.Type with
+      | Child -> sheet, Cmd.Empty
+      | _ -> 
         { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = true} }, Cmd.Empty
 
       // let sheet' = 
