@@ -24,6 +24,13 @@ module Application =
     match msg with
     | StartEdit (pos, cell) ->
         { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = true} }, Cmd.Empty
+
+      // let sheet' = 
+      //   match sheet.EditState with
+      //   | Some {FullFocus = ff} when not ff -> { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = false} }
+      //   | Some _ -> sheet
+      //   | None  -> { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = false} }
+      // sheet', Cmd.Empty
     | UpdateCells (pos, value) ->
         let sheet = Evaluator.recalc pos sheet false value
         sheet, Cmd.Empty
@@ -61,26 +68,32 @@ module Application =
   let errorMsg (_, e) =
     match e with
     | StackUnderflow (expected, given) ->
-        sprintf "Err: need %i values but given %i." expected given
-    | ParseFailure s -> sprintf "Err: %s is giberish" s
+        "Underflow", sprintf "need %i params but given %i" expected given
+    | ParseFailure s -> 
+        "BadInput", sprintf "%s is giberish" s
     | ReferenceCycle (Position(c,r)::t) ->
         let cycle =
           List.fold (fun s (Position (c, r)) -> s + (sprintf " to %c%i" c r)) "" t
-        sprintf "Err: loop %c%i %s" c r cycle
-    | SelfReference -> "Err: points to self"
-    | DivideByZero i -> sprintf "Err: %i/0" i
+        "Loop", sprintf "%c%i %s" c r cycle
+    | SelfReference -> 
+        "SelfRef", "cell points to self"
+    | DivideByZero i -> 
+        "DivByZero", sprintf "%i/0" i
     | MissingDefinition s ->
-        sprintf "Err: %s is not defined" s
+        "Undefined", sprintf "%s is not defined" s
     | ReferenceOffSheet (Position (c, r)) ->
-        sprintf "Err: %c%i is off the sheet" c r
+        "OffSheet", sprintf "%c%i is off the sheet" c r
     | InvalidParams (op, expected, given) ->
         let expected = System.String.Join(", ", List.map printType expected)
         let given = System.String.Join(", ", List.map printValue given)
-        sprintf "Err: %s needs (%s) but given  (%s)." op expected given
-    | MissingItem (Position (c, r)) -> sprintf "Err: %c%i is empty." c r
-    | NotImplemented s -> sprintf "Err: %s is reserved by Loglo." s
-    | FilledCellOverwritten -> "Err: read only"
-    | _ -> e.ToString()
+        "InvalidParams", sprintf "%s needs (%s) but given  (%s)" op expected given
+    | MissingItem (Position (c, r)) -> 
+        "NoValue", sprintf "%c%i is empty" c r
+    | NotImplemented s -> 
+        "Reserved", sprintf "%s is reserved by Loglo" s
+    | FilledCellOverwritten -> 
+        "ReadOnly", "cell is read only"
+    | _ -> "Err", e.ToString()
 
 
 
@@ -141,6 +154,8 @@ module Application =
               // HACK - otherwise cancells edit for some reason
               | " " when cell.Input.Length = 0 -> e.preventDefault()
               | _ -> () )
+
+            prop.onClick (fun _ -> dispatch(StartEdit(pos, cell))) 
             prop.onTextChange (fun e -> 
               dispatch (UpdateCells(pos, e))) // dispatch on value accepted 
             prop.onInput (fun e ->            // dispatch on each keystroke
@@ -172,10 +187,17 @@ module Application =
             | _ -> cell.Stack
           let txts = 
             stack |> List.rev 
-            |> List.map (fun v -> match v with | Error (p, e) -> sprintf "(%s)" (errorMsg (p, e)) | _ -> printValue v)
+            |> List.map (fun v -> 
+              match v with 
+              | Error (p, e) when pos = p-> 
+                let c, d = errorMsg (p, e)
+                sprintf "(%s: %s)" c d
+              | _ -> printValue v)
+          let alert = List.exists (fun v -> match v with | Error (p, _) when p = pos -> true | _ -> false) stack
           let txt = System.String.Join(", ", txts)
           prop.colSpan 6
-          prop.text (sprintf "[%s" txt)]]
+          prop.text (sprintf "[%s" txt)
+          if alert then prop.style [style.color "Red"]]]//color "#Red"]]]
       | _ -> 
         Html.tr [
           topLeft
@@ -197,7 +219,9 @@ module Application =
         | Name s as v -> printValue v
         | Paths p as v -> printValue v
         | Error (p, e) ->
-            if p = pos then errorMsg (p, e) else "Err"
+            if p = pos 
+            then fst (errorMsg (p, e))
+            else "Err"
         | Nil -> ""
       value
 
