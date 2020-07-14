@@ -22,8 +22,8 @@ module Application =
 
   let update msg sheet =
     match msg with
-    | StartEdit active ->
-        { sheet with Active = Some active }, Cmd.Empty
+    | StartEdit (pos, cell) ->
+        { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = true} }, Cmd.Empty
     | UpdateCells (pos, value) ->
         let sheet = Evaluator.recalc pos sheet false value
         sheet, Cmd.Empty
@@ -83,6 +83,7 @@ module Application =
     | _ -> e.ToString()
 
 
+
   let renderCellEditor colSpan dispatch sheet =
     // TODO - State machine for editing as follows:
     // * on click
@@ -101,8 +102,15 @@ module Application =
     // TODO - highlight row/col of selection
     // TODO - better emphasis of unfocused cell editor (border pixel width?)
 
-    match sheet.Active with
-    | Some (pos, cell) ->
+
+    let moveTo pos sheet = 
+      if Sheet.contains pos sheet
+      then 
+        let c = Sheet.find pos sheet
+        dispatch (StartEdit (pos, c))
+
+    match sheet.EditState with
+    | Some {Pos = pos; Cell = cell; FullFocus = ff} ->
       Html.td [
         prop.style [style.padding 0]
         prop.colSpan colSpan
@@ -114,36 +122,36 @@ module Application =
             prop.type'.text
             prop.value cell.Input
             prop.onKeyDown (fun e -> 
-              printfn "%s" e.key
-              let nextPos =
-                match e.key with
-                | "Enter" | "ArrowDown" -> Some (Position.down pos)
-                | "Tab" -> e.preventDefault(); Some (Position.right pos)
-                | "ArrowRight" -> Some (Position.right pos)
-                | "ArrowLeft" -> Some (Position.left pos)
-                | "ArrowUp" -> Some (Position.up pos)
-                | "Space" -> printfn "space"; e.stopPropagation(); e.stopImmediatePropagation() ; None
-                | _ -> None
-              match nextPos with
-              | Some p when Sheet.contains p sheet-> 
-                let c = Sheet.find p sheet
-                dispatch (StartEdit (p, c))
-              | _ -> ())
+              match e.key with
+              | "Enter" when e.shiftKey ->moveTo (Position.up pos) sheet
+              | "Enter" -> moveTo (Position.down pos) sheet
+
+              | "Tab" when e.shiftKey -> 
+                e.preventDefault()
+                moveTo (Position.left pos) sheet
+              | "Tab" -> 
+                e.preventDefault()
+                moveTo (Position.right pos) sheet
+
+              | "ArrowUp" -> moveTo (Position.up pos) sheet
+              | "ArrowDown" -> moveTo (Position.down pos) sheet
+              | "ArrowLeft" when not ff -> moveTo (Position.left pos) sheet
+              | "ArrowRight" when not ff -> moveTo (Position.right pos) sheet
+
+              // HACK - otherwise cancells edit for some reason
+              | " " when cell.Input.Length = 0 -> e.preventDefault()
+              | _ -> () )
             prop.onTextChange (fun e -> 
               dispatch (UpdateCells(pos, e))) // dispatch on value accepted 
             prop.onInput (fun e ->            // dispatch on each keystroke
               let txt = (e.currentTarget :?> Browser.Types.HTMLInputElement).value
               dispatch(UpdateActiveValue(pos, txt)))]]]
-              // TODO - deleting last char ends edit
-              // match txt.Trim() with
-              //   | "" -> () // dispatching empty text ends edit
-              //   | _ -> dispatch(UpdateActiveValue(pos, txt)))]]]
-    | None -> failwith "should not happen"
+    | _ -> failwith "should not happen"
 
   let topLeft = Html.td [prop.style [style.width 45]]
   let renderEditBar dispatch sheet =
-    match sheet.Active with
-    | Some (pos, cell) -> 
+    match sheet.EditState with
+    | Some {Pos = pos; Cell = cell; FullFocus = true} -> 
       Html.tr [
         topLeft
         // Pre stack
@@ -168,7 +176,7 @@ module Application =
           let txt = System.String.Join(", ", txts)
           prop.colSpan 6
           prop.text (sprintf "[%s" txt)]]
-      | None -> 
+      | _ -> 
         Html.tr [
           topLeft
           Html.td [prop.text "[ "; prop.colSpan 1; prop.style [style.textAlign.right]]
@@ -204,11 +212,9 @@ module Application =
         prop.text (content cell) ]
 
   let renderCell dispatch pos sheet =
-    let cell = Sheet.find pos sheet
-    if sheet.Active = Some (pos, cell) then 
-      renderCellEditor 1 dispatch sheet
-    else 
-      renderValue dispatch pos cell
+    match sheet.EditState with
+    | Some {Pos = p} when p = pos -> renderCellEditor 1 dispatch sheet
+    | _ -> renderValue dispatch pos (Sheet.find pos sheet) 
 
   let render sheet dispatch =
 
@@ -243,7 +249,7 @@ module Application =
   let initialize () =
     { Cols = ['A' .. 'J']
       Rows = [1 .. 20]
-      Active = None
+      EditState = None
       Definitions = Map.empty
       Cells = Map.empty },
     Cmd.Empty

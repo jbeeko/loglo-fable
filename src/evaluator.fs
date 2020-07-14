@@ -104,7 +104,7 @@ module Domain =
 
   // TODO - use this for Active rather than the tupple. Then implmement
   // The proposed editing changes in application.
-  type ActiveCell = {
+  type EditState = {
     Pos: Position
     Cell: Cell
     FullFocus: bool
@@ -113,7 +113,7 @@ module Domain =
   type Sheet = {
     Rows : int list
     Cols : char list
-    Active : (Position*Cell) option
+    EditState : EditState option
     Cells : Map<Position, Cell>
     Definitions : Map<Value, Value>
   }
@@ -122,7 +122,7 @@ module Domain =
 
     // Misc sheet manipulation functions
     let contains pos sheet =
-      let (Position (c, r)) =  pos
+      let (Position (c, r)) =  pos 
       List.contains r sheet.Rows && List.contains c sheet.Cols
 
     let upsert pos sheet cell =
@@ -402,6 +402,8 @@ module Evaluator =
       then 
         let sheet' = parseEvaluateCell pos (update pos sheet input)
         let cell = Sheet.find pos sheet'
-        let sheet'' = {sheet with Active = Some (pos, {cell with Input = input})}
-        sheet''
+        match sheet.EditState with 
+        | Some es -> {sheet with EditState = Some {es with Pos = pos; Cell = {cell with Input = input}}}
+        | None -> sheet
       else basicRecalc (Set.empty) pos (update pos sheet input)
+ 
