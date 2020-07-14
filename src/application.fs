@@ -23,10 +23,12 @@ module Application =
   let update msg sheet =
     match msg with
     | StartEdit (pos, cell) ->
-      match cell.Type with
-      | Child -> sheet, Cmd.Empty
-      | _ -> 
-        { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = true} }, Cmd.Empty
+      { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = true} }, Cmd.Empty
+
+      // match cell.Type with
+      // | Child -> sheet, Cmd.Empty
+      // | _ -> 
+      //   { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = true} }, Cmd.Empty
 
       // let sheet' = 
       //   match sheet.EditState with
@@ -132,6 +134,9 @@ module Application =
         prop.colSpan colSpan
         prop.children [
           Html.input [
+            match cell.Type with 
+            | Child -> prop.readOnly true
+            | _ -> prop.readOnly false
             prop.className [Bulma.Input]
             prop.style [style.borderRadius 0]
             prop.autoFocus true
