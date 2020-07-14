@@ -24,7 +24,7 @@ module Application =
     match msg with
     | StartEdit (pos, cell) ->
       { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = true} }, Cmd.Empty
-
+      // TODO - is this right or should these cells be arrowed over, or not be selectable at all?
       // match cell.Type with
       // | Child -> sheet, Cmd.Empty
       // | _ -> 
