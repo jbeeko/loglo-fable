@@ -1,3 +1,12 @@
+//TODO: 
+// *  row select
+// *  row insert
+// *  highlight row/coll where selection is
+// *  unfocused selection should be more obvious
+// *  edit bar should be reactive columns so the input stack is continguous 
+//    with the edit field and then contiguous with the output. 
+
+
 // ----------------------------------------------------------------------------
 // LOGLO UI
 // Loglo UI as demonstrated by: Avi Bryant's loglo.app
@@ -72,10 +81,10 @@ module Application =
     | Error (p,e) -> "Err"
     | Nil -> "nil"
 
-  let errorMsg (_, e) =
+  let errorCodeAndComment (_, e) =
     match e with
     | StackUnderflow (expected, given) ->
-        "Underflow", sprintf "need %i params but given %i" expected given
+        "Underflow", sprintf "needed %i params got %i" expected given
     | ParseFailure s -> 
         "BadInput", sprintf "%s" s
     | ReferenceCycle (Position(c,r)::t) ->
@@ -87,13 +96,13 @@ module Application =
     | DivideByZero i -> 
         "DivByZero", sprintf "%i/0" i
     | MissingDefinition s ->
-        "Undefined", sprintf "%s is not defined" s
+        "Undefined", sprintf "%s" s
     | ReferenceOffSheet (Position (c, r)) ->
         "OffSheet", sprintf "%c%i" c r
     | InvalidParams (op, expected, given) ->
         let expected = System.String.Join(", ", List.map printType expected)
         let given = System.String.Join(", ", List.map printValue given)
-        "InvalidParams", sprintf "%s needs %s but given  %s" op expected given
+        "BadInput", sprintf "%s needed %s but got  %s" op expected given
     | MissingItem (Position (c, r)) -> 
         "Empty", sprintf "%c%i" c r
     | NotImplemented s -> 
@@ -101,6 +110,11 @@ module Application =
     | FilledCellOverwritten ->  
         "ReadOnly", ""
     | _ -> "Err", e.ToString()
+
+  let errorMsg (p, e) =
+    match errorCodeAndComment (p, e) with
+    | c, "" -> c
+    | c, d -> sprintf "%s: %s" c d
 
 
 
@@ -199,10 +213,7 @@ module Application =
             stack |> List.rev 
             |> List.map (fun v -> 
               match v with 
-              | Error (p, e) when pos = p-> 
-                match errorMsg (p, e) with
-                | c, "" -> c
-                | c, d -> sprintf "(%s: %s)" c d
+              | Error (p, e) when pos = p ->  sprintf "(%s)" (errorMsg (p, e))
               | _ -> printValue v)
           let alert = List.exists (fun v -> match v with | Error (p, _) when p = pos -> true | _ -> false) stack
           let txt = System.String.Join(", ", txts)
@@ -232,7 +243,7 @@ module Application =
         | Paths p as v -> printValue v
         | Error (p, e) ->
             if p = pos 
-            then fst (errorMsg (p, e))
+            then errorMsg (p, e)
             else "Err"
         | Nil -> ""
       value

@@ -41,7 +41,7 @@ module Parser =
     many1 anyChar
 
   let private literalString =
-    let lChar = anyOf (['A'..'Z']@['a'..'z']@['*'; '+'; '-'; '/']@['0'..'9'])
+    let lChar = anyOf (['A'..'Z']@['a'..'z']@['_';':'; '*'; '+'; '-'; '/']@['0'..'9'])
     between (pchar '"') (many lChar) (pchar '"')
 
   let private refString =
@@ -88,7 +88,7 @@ module Parser =
     blockExprs |> mapP (fun l -> Block  l)
 
   let private expressionList' =
-    many (choice [ nestedRef; reference; indirectRef; symbol; ws; number; text; block; symbolLiteral; unparsable])
+    many (choice [nestedRef; reference; indirectRef;  symbol; ws; number; text; symbolLiteral; block; unparsable])
 
   let parse input =
     match run expressionList' input with
