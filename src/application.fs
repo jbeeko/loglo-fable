@@ -70,29 +70,29 @@ module Application =
     | StackUnderflow (expected, given) ->
         "Underflow", sprintf "need %i params but given %i" expected given
     | ParseFailure s -> 
-        "BadInput", sprintf "%s is giberish" s
+        "BadInput", sprintf "%s" s
     | ReferenceCycle (Position(c,r)::t) ->
         let cycle =
           List.fold (fun s (Position (c, r)) -> s + (sprintf " to %c%i" c r)) "" t
         "Loop", sprintf "%c%i %s" c r cycle
     | SelfReference -> 
-        "SelfRef", "cell points to self"
+        "SelfRef", ""
     | DivideByZero i -> 
         "DivByZero", sprintf "%i/0" i
     | MissingDefinition s ->
         "Undefined", sprintf "%s is not defined" s
     | ReferenceOffSheet (Position (c, r)) ->
-        "OffSheet", sprintf "%c%i is off the sheet" c r
+        "OffSheet", sprintf "%c%i" c r
     | InvalidParams (op, expected, given) ->
         let expected = System.String.Join(", ", List.map printType expected)
         let given = System.String.Join(", ", List.map printValue given)
-        "InvalidParams", sprintf "%s needs (%s) but given  (%s)" op expected given
+        "InvalidParams", sprintf "%s needs %s but given  %s" op expected given
     | MissingItem (Position (c, r)) -> 
-        "NoValue", sprintf "%c%i is empty" c r
+        "Empty", sprintf "%c%i" c r
     | NotImplemented s -> 
-        "Reserved", sprintf "%s is reserved by Loglo" s
+        "Reserved", sprintf "%s" s
     | FilledCellOverwritten -> 
-        "ReadOnly", "cell is read only"
+        "ReadOnly", ""
     | _ -> "Err", e.ToString()
 
 
@@ -148,8 +148,8 @@ module Application =
 
               | "ArrowUp" -> moveTo (Position.up pos) sheet
               | "ArrowDown" -> moveTo (Position.down pos) sheet
-              | "ArrowLeft" when not ff -> moveTo (Position.left pos) sheet
-              | "ArrowRight" when not ff -> moveTo (Position.right pos) sheet
+              | "ArrowLeft" when ff -> moveTo (Position.left pos) sheet
+              | "ArrowRight" when ff -> moveTo (Position.right pos) sheet
 
               // HACK - otherwise cancells edit for some reason
               | " " when cell.Input.Length = 0 -> e.preventDefault()
@@ -190,8 +190,9 @@ module Application =
             |> List.map (fun v -> 
               match v with 
               | Error (p, e) when pos = p-> 
-                let c, d = errorMsg (p, e)
-                sprintf "(%s: %s)" c d
+                match errorMsg (p, e) with
+                | c, "" -> c
+                | c, d -> sprintf "(%s: %s)" c d
               | _ -> printValue v)
           let alert = List.exists (fun v -> match v with | Error (p, _) when p = pos -> true | _ -> false) stack
           let txt = System.String.Join(", ", txts)
