@@ -55,6 +55,7 @@ module Application =
       | Int i, _ -> "num "+cmnt
       | Text s, _ -> "text "+cmnt
       | Name s, _ -> "name "+cmnt
+      | Binding s, _ -> "def "+cmnt
       | Code l, _ -> "{} "+cmnt
       | Paths l, _ -> "Paths "+cmnt
       | Error (p,e), _ -> "Error "+cmnt
@@ -65,6 +66,7 @@ module Application =
     | Int i -> sprintf "%i" i
     | Text s -> sprintf "\"%s\"" s
     | Name s -> sprintf ":%s" s
+    | Binding s -> sprintf "%s" s
     | Code l -> "{}"
     | Paths l -> sprintf "%i Paths" l.Length
     | Error (p,e) -> "Err"
@@ -96,7 +98,7 @@ module Application =
         "Empty", sprintf "%c%i" c r
     | NotImplemented s -> 
         "Reserved", sprintf "%s" s
-    | FilledCellOverwritten -> 
+    | FilledCellOverwritten ->  
         "ReadOnly", ""
     | _ -> "Err", e.ToString()
 
@@ -226,6 +228,7 @@ module Application =
         | Text s as v -> printValue v
         | Code _ as v -> printValue v
         | Name s as v -> printValue v
+        | Binding s as v -> printValue v
         | Paths p as v -> printValue v
         | Error (p, e) ->
             if p = pos 

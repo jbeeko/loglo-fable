@@ -1,3 +1,8 @@
+// BUGS
+//  * need to delete bindings when def gets removed, kind of how unfill happens
+//  * need to handle "shadowing" of bindings somehow
+
+
 // ----------------------------------------------------------------------------
 // LOGLO EVALUATOR
 // Evaluator of Loglo language as defined by: Avi Bryant's http://loglo.app
@@ -28,6 +33,7 @@ module Domain =
     | Int of int
     | Text of string
     | Name of string
+    | Binding of string
     | Code of Expr list
     | Paths of Path list
     | Error of Position*Error
@@ -196,11 +202,11 @@ module Domain =
 
     let def pos sheet =
       let cell = find pos sheet
-      let value, name, c = Cell.pop2 cell
-      match name with
-      | Name s ->
-        {upsert pos sheet c with Definitions = Map.add name value sheet.Definitions}
-      | p -> error (InvalidParams ("def", [Some ((Name "aName"), "")], [p])) pos sheet
+      match Cell.pop2 cell with
+      | value, (Name n), c ->
+        let c' = Cell.push (Binding n) c
+        {upsert pos sheet c' with Definitions = Map.add (Binding n) value sheet.Definitions}
+      | value, _, c -> error (InvalidParams ("def", [Some ((Name "aName"), "")], [value])) pos sheet
 
     let fill pos sheet =
       let insertFilled parentPos pos sheet i =
@@ -320,9 +326,9 @@ module Evaluator =
             | None -> delete pos sheet
         | _ -> delete pos sheet
     | Symbol s ->
-        // Lookup up names in global dictionary. If not defined
+        // Lookup up bindings in global dictionary. If not defined
         // then treat as primative.
-        match Map.tryFind (Name s) sheet.Definitions with
+        match Map.tryFind (Binding s) sheet.Definitions with
         | Some (Code exprList) -> evaluateExprs exprList pos sheet
         | Some v -> push v pos sheet
         | None -> evaluatePrimative pos sheet s
