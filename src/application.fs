@@ -114,6 +114,7 @@ module Application =
             prop.type'.text
             prop.value cell.Input
             prop.onKeyDown (fun e -> 
+              printfn "%s" e.key
               let nextPos =
                 match e.key with
                 | "Enter" | "ArrowDown" -> Some (Position.down pos)
@@ -121,6 +122,7 @@ module Application =
                 | "ArrowRight" -> Some (Position.right pos)
                 | "ArrowLeft" -> Some (Position.left pos)
                 | "ArrowUp" -> Some (Position.up pos)
+                | "Space" -> printfn "space"; e.stopPropagation(); e.stopImmediatePropagation() ; None
                 | _ -> None
               match nextPos with
               | Some p when Sheet.contains p sheet-> 

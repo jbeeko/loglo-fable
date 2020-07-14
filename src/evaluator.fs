@@ -102,7 +102,14 @@ module Domain =
       let v, _ = peek cell
       v
 
-
+  // TODO - use this for Active rather than the tupple. Then implmement
+  // The proposed editing changes in application.
+  type ActiveCell = {
+    Pos: Position
+    Cell: Cell
+    FullFocus: bool
+  }
+  
   type Sheet = {
     Rows : int list
     Cols : char list
