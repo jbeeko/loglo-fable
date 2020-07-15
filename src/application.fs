@@ -267,13 +267,23 @@ module Application =
 
     let editBar = renderEditBar dispatch sheet
 
-    let colLabel (h:string) = Html.th [prop.style [style.backgroundColor "LightGray"];  prop.text h]
-    let rowLabel (h:string) = Html.th [prop.style [style.textAlign.right; style.backgroundColor "LightGray"];  prop.text h]
-    let colHeaders = Html.tr (topLeft::(sheet.Cols |> List.map (string >> colLabel)))
+    let colLabel h = 
+      Html.th [
+        match sheet.EditState with
+        | Some {Pos = Position (c, _)} when c = h -> prop.style [style.backgroundColor "LightGray"; style.borderBottomWidth 3; style.borderBottomColor "Blue"]
+        | _ -> prop.style [style.backgroundColor "LightGray"]
+        prop.text (string h)]
+    let rowLabel i = 
+      Html.th [
+        match sheet.EditState with
+        | Some {Pos = Position (_, r)} when r = i -> prop.style [style.backgroundColor "LightGray"; style.borderRightWidth 3; style.borderRightColor "Blue"]
+        | _ -> prop.style [style.backgroundColor "LightGray"]
+        prop.text (string i)]
+    let colHeaders = Html.tr (topLeft::(sheet.Cols |> List.map colLabel))
 
     let cells n =
       let cells = sheet.Cols |> List.mapi (fun i h -> renderCell dispatch (Position (h, n)) sheet)
-      rowLabel (string n) :: cells
+      (rowLabel n) :: cells
     let rows = sheet.Rows |> List.map (cells >> Html.tr) 
 
     Html.div [
