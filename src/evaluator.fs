@@ -48,6 +48,7 @@ module Domain =
     | SelfReference
     | DivideByZero of int
     | MissingDefinition of string
+    | DuplicateDefinition of string*Value
     | ReferenceOffSheet of Position
     | InvalidParams of string*((Value*string) option list)*(Value list)
     | MissingItem of Position
@@ -212,8 +213,11 @@ module Domain =
       let cell = find pos sheet
       match Cell.pop2 cell with
       | value, (Name n), c ->
-        let c' = Cell.push (Binding n) c
-        {upsert pos sheet c' with Definitions = Map.add (Binding n) value sheet.Definitions}
+        match Map.tryFind (Binding n) sheet.Definitions with
+        | None ->
+          let c' = Cell.push (Binding n) c
+          {upsert pos sheet c' with Definitions = Map.add (Binding n) value sheet.Definitions}
+        | Some v -> error (DuplicateDefinition (n, v)) pos sheet
       | value, _, c -> error (InvalidParams ("def", [Some ((Name "aName"), "")], [value])) pos sheet
 
     let fill pos sheet =

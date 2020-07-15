@@ -34,21 +34,21 @@ module Application =
   let update msg sheet =
     match msg with
     | StartEdit (pos, cell) ->
-      { sheet with EditState = Some {Pos = pos; Cell = cell; Orig = cell; FullFocus = true} }, Cmd.Empty 
+      //{ sheet with EditState = Some {Pos = pos; Cell = cell; Orig = cell; FullFocus = true} }, Cmd.Empty 
       // TODO - is this right or should these cells be arrowed over, or not be selectable at all?
       // match cell.Type with
       // | Child -> sheet, Cmd.Empty
       // | _ -> 
       //   { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = true} }, Cmd.Empty
 
-      // let sheet' = 
-      //   printfn "%A" sheet.EditState
-      //   match sheet.EditState with
-      //   | Some es when es.Pos = pos && not es.FullFocus -> 
-      //      { sheet with EditState = Some {es with FullFocus = true} }
-      //   | Some es when es.Pos = pos && es.FullFocus -> sheet
-      //   | _  -> { sheet with EditState = Some {Pos = pos; Cell = cell; Orig = cell; FullFocus = false} }
-      //sheet', Cmd.Empty
+      let sheet' = 
+        match sheet.EditState with
+        | Some es when es.Pos = pos && not es.FullFocus -> 
+          { sheet with EditState = Some {es with FullFocus = true} }
+        | Some es when es.Pos = pos && es.FullFocus -> sheet
+        | _  -> 
+          { sheet with EditState = Some {Pos = pos; Cell = cell; Orig = cell; FullFocus = false} }
+      sheet', Cmd.Empty
     | EndEdit cancel -> 
       match sheet.EditState, cancel with 
       | Some es, true ->
@@ -110,6 +110,8 @@ module Application =
         "DivByZero", sprintf "%i/0" i
     | MissingDefinition s ->
         "Undefined", sprintf "%s" s
+    | DuplicateDefinition (s, v) ->
+        "Duplicate", sprintf "%s is %s" s (printValue v)
     | ReferenceOffSheet (Position (c, r)) ->
         "OffSheet", sprintf "%c%i" c r
     | InvalidParams (op, expected, given) ->
@@ -192,7 +194,10 @@ module Application =
               | " " when cell.Input.Length = 0 -> e.preventDefault()
               | _ -> () )
 
-            prop.onClick (fun _ -> dispatch(StartEdit(pos, cell))) 
+            prop.onClick (fun _ -> 
+              match colSpan with
+              | 1 -> dispatch(StartEdit(pos, cell))
+              | _ -> () )
             prop.onTextChange (fun e -> 
               dispatch (UpdateCells(pos, e))) // dispatch on value accepted 
             prop.onInput (fun e ->            // dispatch on each keystroke
@@ -203,7 +208,7 @@ module Application =
   let topLeft = Html.td [prop.style [style.width 45]]
   let renderEditBar dispatch sheet =
     match sheet.EditState with
-    | Some {Pos = pos; Cell = cell; FullFocus = true} -> 
+    | Some {Pos = pos; Cell = cell} -> 
       Html.tr [
         topLeft
         // Pre stack
