@@ -119,11 +119,15 @@ module Domain =
     FullFocus: bool
     Orig: Cell
   }
-  
+  type DisplayMode = 
+  | Inputs
+  | Values
+
   type Sheet = {
     Rows : int list
     Cols : char list
     EditState : EditState option
+    DisplayMode: DisplayMode
     Cells : Map<Position, Cell>
     Definitions : Map<Value, Value>
   }

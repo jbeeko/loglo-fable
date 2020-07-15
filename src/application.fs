@@ -27,8 +27,9 @@ module Application =
   type Message =
     | StartEdit of (Position*Cell)
     | EndEdit of bool
+    | ToggleDisplayMode
     | UpdateCells of Position * string
-    | UpdateActiveValue of Position * string
+    | UpdateEditValue of Position * string
 
   let update msg sheet =
     match msg with
@@ -51,10 +52,14 @@ module Application =
       | Some es, true ->
         {Sheet.upsert es.Pos sheet es.Orig with EditState = None}, Cmd.Empty
       | _, _ -> sheet, Cmd.Empty
+    | ToggleDisplayMode -> 
+      match sheet.DisplayMode with 
+      | Inputs -> {sheet with DisplayMode = Values }, Cmd.Empty
+      | Values -> {sheet with DisplayMode = Inputs}, Cmd.Empty
     | UpdateCells (pos, value) ->
         let sheet = Evaluator.recalc pos sheet false value
         sheet, Cmd.Empty
-    | UpdateActiveValue (pos, value) ->
+    | UpdateEditValue (pos, value) ->
         let sheet' = Evaluator.recalc pos sheet true value 
         sheet', Cmd.Empty
 
@@ -89,7 +94,7 @@ module Application =
 
   let errorCodeAndComment (_, e) =
     match e with
-    | StackUnderflow (expected, given) ->
+    | StackUnderflow (expected, given) -> 
         "Underflow", sprintf "needed %i params got %i" expected given
     | ParseFailure s -> 
         "BadInput", sprintf "%s" s
@@ -162,7 +167,9 @@ module Application =
             prop.value cell.Input
             prop.onKeyDown (fun e -> 
               match e.key with
+              | "`" when e.ctrlKey -> dispatch ToggleDisplayMode
               | "Escape" -> dispatch (EndEdit true)
+
               | "Enter" when e.shiftKey ->moveTo (Position.up pos) sheet
               | "Enter" -> moveTo (Position.down pos) sheet
 
@@ -187,7 +194,7 @@ module Application =
               dispatch (UpdateCells(pos, e))) // dispatch on value accepted 
             prop.onInput (fun e ->            // dispatch on each keystroke
               let txt = (e.currentTarget :?> Browser.Types.HTMLInputElement).value
-              dispatch(UpdateActiveValue(pos, txt)))]]]
+              dispatch(UpdateEditValue(pos, txt)))]]]
     | _ -> failwith "should not happen"
 
   let topLeft = Html.td [prop.style [style.width 45]]
@@ -231,10 +238,11 @@ module Application =
           Html.td [prop.text "[ "; prop.colSpan 6]]
 
 
-  let renderValue dispatch pos cell =
+  let renderValue dispatch pos sheet =
     // TODO - should draw Paths as SVG on a canvas, others as str
     // TODO - split cell, with stack and value below, any SVG above
     //        This will give more context.
+    let cell = (Sheet.find pos sheet) 
     let content cell =
       let value =
         match (Cell.value cell) with
@@ -259,12 +267,12 @@ module Application =
     Html.td [
         match Cell.value cell with | Error _ -> prop.style [bgStyle; style.color "Red"] | _ -> prop.style[bgStyle]
         prop.onClick (fun _ -> dispatch(StartEdit(pos, cell))) 
-        prop.text (content cell) ]
+        prop.text (match sheet.DisplayMode with | Values -> content cell | Inputs -> cell.Input)]
 
   let renderCell dispatch pos sheet =
     match sheet.EditState with
     | Some {Pos = p} when p = pos -> renderCellEditor 1 dispatch sheet
-    | _ -> renderValue dispatch pos (Sheet.find pos sheet) 
+    | _ -> renderValue dispatch pos sheet
 
   let render sheet dispatch =
 
@@ -312,6 +320,7 @@ module Application =
     { Cols = ['A' .. 'J']
       Rows = [1 .. 20]
       EditState = None
+      DisplayMode = Values
       Definitions = Map.empty
       Cells = Map.empty },
     Cmd.Empty
