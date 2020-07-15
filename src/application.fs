@@ -153,6 +153,7 @@ module Application =
     match sheet.EditState with
     | Some {Pos = pos; Cell = cell; FullFocus = ff} ->
       Html.td [
+        prop.className [Bulma.IsSize7]
         prop.style [style.padding 0]
         prop.colSpan colSpan
         prop.children [
@@ -160,7 +161,7 @@ module Application =
             match cell.Type with 
             | Child -> prop.readOnly true
             | _ -> prop.readOnly false
-            prop.className [Bulma.Input; if colSpan = 1 then Bulma.IsFocused else ""]
+            prop.className [Bulma.IsSize7; Bulma.Input; if colSpan = 1 then Bulma.IsFocused else ""]
             prop.style [style.borderRadius 0]
             prop.autoFocus true
             prop.type'.text
@@ -289,7 +290,7 @@ module Application =
       Html.th [
         match sheet.EditState with
         | Some {Pos = Position (_, r)} when r = i -> 
-          prop.style [style.backgroundColor "LightGray"; style.borderRightWidth 3; style.borderRightColor "RoyalBlue"]
+          prop.style [style.backgroundColor "LightGray"; style.borderRightWidth 2; style.borderRightColor "RoyalBlue"]
         | _ -> prop.style [style.backgroundColor "LightGray"]
         prop.text (string i)]
     let colHeaders = Html.tr (topLeft::(sheet.Cols |> List.map colLabel))
@@ -308,6 +309,7 @@ module Application =
             Bulma.Table 
             Bulma.IsFullwidth
             Bulma.IsBordered
+            Bulma.IsSize7
           ]
           prop.children [
             Html.thead [editBar; colHeaders]
