@@ -89,8 +89,8 @@ module Application =
         "BadInput", sprintf "%s" s
     | ReferenceCycle (Position(c,r)::t) ->
         let cycle =
-          List.fold (fun s (Position (c, r)) -> s + (sprintf " to %c%i" c r)) "" t
-        "Loop", sprintf "%c%i %s" c r cycle
+          List.fold (fun s (Position (c, r)) -> s + (sprintf "-%c%i" c r)) "" t
+        "Loop", sprintf "%c%i%s" c r cycle
     | SelfReference -> 
         "SelfRef", ""
     | DivideByZero i -> 
