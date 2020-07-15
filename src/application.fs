@@ -26,6 +26,7 @@ module Application =
   // ----------------------------------------------------------------------------
   type Message =
     | StartEdit of (Position*Cell)
+    | EndEdit
     | UpdateCells of Position * string
     | UpdateActiveValue of Position * string
 
@@ -45,6 +46,7 @@ module Application =
       //   | Some _ -> sheet
       //   | None  -> { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = false} }
       // sheet', Cmd.Empty
+    | EndEdit -> {sheet with EditState = None}, Cmd.Empty
     | UpdateCells (pos, value) ->
         let sheet = Evaluator.recalc pos sheet false value
         sheet, Cmd.Empty
@@ -156,6 +158,7 @@ module Application =
             prop.value cell.Input
             prop.onKeyDown (fun e -> 
               match e.key with
+              | "Escape" -> dispatch EndEdit
               | "Enter" when e.shiftKey ->moveTo (Position.up pos) sheet
               | "Enter" -> moveTo (Position.down pos) sheet
 
@@ -267,7 +270,7 @@ module Application =
       Html.th [
         match sheet.EditState with
         | Some {Pos = Position (c, _)} when c = h -> 
-          prop.style [style.backgroundColor "LightGray"; style.borderBottomWidth 3; style.borderBottomColor "RoyalBlue"]
+          prop.style [style.backgroundColor "LightGray"; style.borderBottomWidth 2; style.borderBottomColor "RoyalBlue"]
         | _ -> prop.style [style.backgroundColor "LightGray"]
         prop.text (string h)]
     let rowLabel i = 
