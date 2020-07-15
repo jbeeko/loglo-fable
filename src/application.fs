@@ -133,10 +133,6 @@ module Application =
     //    - right/left arrow keys navigate text
     // NOTE: all the above is true for both the edit bar and the in cell editor
 
-    // TODO - highlight row/col of selection
-    // TODO - better emphasis of unfocused cell editor (border pixel width?)
-
-
     let moveTo pos sheet = 
       if Sheet.contains pos sheet
       then 
@@ -153,7 +149,7 @@ module Application =
             match cell.Type with 
             | Child -> prop.readOnly true
             | _ -> prop.readOnly false
-            prop.className [Bulma.Input]
+            prop.className [Bulma.Input; if colSpan = 1 then Bulma.IsFocused else ""]
             prop.style [style.borderRadius 0]
             prop.autoFocus true
             prop.type'.text
@@ -270,13 +266,15 @@ module Application =
     let colLabel h = 
       Html.th [
         match sheet.EditState with
-        | Some {Pos = Position (c, _)} when c = h -> prop.style [style.backgroundColor "LightGray"; style.borderBottomWidth 3; style.borderBottomColor "Blue"]
+        | Some {Pos = Position (c, _)} when c = h -> 
+          prop.style [style.backgroundColor "LightGray"; style.borderBottomWidth 3; style.borderBottomColor "RoyalBlue"]
         | _ -> prop.style [style.backgroundColor "LightGray"]
         prop.text (string h)]
     let rowLabel i = 
       Html.th [
         match sheet.EditState with
-        | Some {Pos = Position (_, r)} when r = i -> prop.style [style.backgroundColor "LightGray"; style.borderRightWidth 3; style.borderRightColor "Blue"]
+        | Some {Pos = Position (_, r)} when r = i -> 
+          prop.style [style.backgroundColor "LightGray"; style.borderRightWidth 3; style.borderRightColor "RoyalBlue"]
         | _ -> prop.style [style.backgroundColor "LightGray"]
         prop.text (string i)]
     let colHeaders = Html.tr (topLeft::(sheet.Cols |> List.map colLabel))
