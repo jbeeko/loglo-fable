@@ -219,7 +219,14 @@ module Domain =
     let fill pos sheet =
       let insertFilled parentPos pos sheet i =
         let (Position (c, r)) = parentPos
-        let cell = {Input = (sprintf "%c%i::%i" c r i); Stack = []; DependsOn = [parentPos]; Type = Child}
+        let deps =
+          if contains (left pos) sheet then [left pos]
+          else []
+        let cell = {
+            Input = (sprintf "%c%i::%i" c r i); 
+            Stack = (findStackLeft pos sheet); 
+            DependsOn = parentPos::deps
+            Type = Child}
         upsert pos sheet cell
 
       let (Position (col, row)) = pos
