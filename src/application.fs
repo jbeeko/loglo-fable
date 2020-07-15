@@ -26,14 +26,14 @@ module Application =
   // ----------------------------------------------------------------------------
   type Message =
     | StartEdit of (Position*Cell)
-    | EndEdit
+    | EndEdit of bool
     | UpdateCells of Position * string
     | UpdateActiveValue of Position * string
 
   let update msg sheet =
     match msg with
     | StartEdit (pos, cell) ->
-      { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = true} }, Cmd.Empty
+      { sheet with EditState = Some {Pos = pos; Cell = cell; Orig = cell; FullFocus = true} }, Cmd.Empty 
       // TODO - is this right or should these cells be arrowed over, or not be selectable at all?
       // match cell.Type with
       // | Child -> sheet, Cmd.Empty
@@ -46,7 +46,11 @@ module Application =
       //   | Some _ -> sheet
       //   | None  -> { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = false} }
       // sheet', Cmd.Empty
-    | EndEdit -> {sheet with EditState = None}, Cmd.Empty
+    | EndEdit cancel -> 
+      match sheet.EditState, cancel with 
+      | Some es, true ->
+        {Sheet.upsert es.Pos sheet es.Orig with EditState = None}, Cmd.Empty
+      | _, _ -> sheet, Cmd.Empty
     | UpdateCells (pos, value) ->
         let sheet = Evaluator.recalc pos sheet false value
         sheet, Cmd.Empty
@@ -158,7 +162,7 @@ module Application =
             prop.value cell.Input
             prop.onKeyDown (fun e -> 
               match e.key with
-              | "Escape" -> dispatch EndEdit
+              | "Escape" -> dispatch (EndEdit true)
               | "Enter" when e.shiftKey ->moveTo (Position.up pos) sheet
               | "Enter" -> moveTo (Position.down pos) sheet
 

@@ -117,6 +117,7 @@ module Domain =
     Pos: Position
     Cell: Cell
     FullFocus: bool
+    Orig: Cell
   }
   
   type Sheet = {
