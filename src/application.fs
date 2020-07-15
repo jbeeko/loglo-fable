@@ -44,7 +44,8 @@ module Application =
       // let sheet' = 
       //   printfn "%A" sheet.EditState
       //   match sheet.EditState with
-      //   | Some es when es.Pos = pos && not es.FullFocus -> { sheet with EditState = Some {es with FullFocus = true} }
+      //   | Some es when es.Pos = pos && not es.FullFocus -> 
+      //      { sheet with EditState = Some {es with FullFocus = true} }
       //   | Some es when es.Pos = pos && es.FullFocus -> sheet
       //   | _  -> { sheet with EditState = Some {Pos = pos; Cell = cell; Orig = cell; FullFocus = false} }
       //sheet', Cmd.Empty
