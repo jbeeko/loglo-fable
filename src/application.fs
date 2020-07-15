@@ -243,14 +243,14 @@ module Application =
             else "Err"
         | Nil -> ""
       value
-
+    let bgStyle =
+        match Cell.value cell, cell.Type with
+        | _, Child-> style.backgroundColor "AliceBlue"
+        | Nil, _ -> style.backgroundColor "White"
+        | _, _-> style.backgroundColor "LightYellow"
+      
     Html.td [
-        prop.style [
-          match Cell.value cell, cell.Type with
-          | Error _, _ -> style.backgroundColor "#FFB0B0"
-          | _, Child-> style.backgroundColor "AliceBlue"
-          | Nil, _ -> style.backgroundColor "White"
-          | _, _-> style.backgroundColor "LightYellow"]
+        match Cell.value cell with | Error _ -> prop.style [bgStyle; style.color "Red"] | _ -> prop.style[bgStyle]
         prop.onClick (fun _ -> dispatch(StartEdit(pos, cell))) 
         prop.text (content cell) ]
 
