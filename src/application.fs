@@ -42,11 +42,12 @@ module Application =
       //   { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = true} }, Cmd.Empty
 
       // let sheet' = 
+      //   printfn "%A" sheet.EditState
       //   match sheet.EditState with
-      //   | Some {FullFocus = ff} when not ff -> { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = false} }
-      //   | Some _ -> sheet
-      //   | None  -> { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = false} }
-      // sheet', Cmd.Empty
+      //   | Some es when es.Pos = pos && not es.FullFocus -> { sheet with EditState = Some {es with FullFocus = true} }
+      //   | Some es when es.Pos = pos && es.FullFocus -> sheet
+      //   | _  -> { sheet with EditState = Some {Pos = pos; Cell = cell; Orig = cell; FullFocus = false} }
+      //sheet', Cmd.Empty
     | EndEdit cancel -> 
       match sheet.EditState, cancel with 
       | Some es, true ->
@@ -183,8 +184,8 @@ module Application =
 
               | "ArrowUp" -> moveTo (Position.up pos) sheet
               | "ArrowDown" -> moveTo (Position.down pos) sheet
-              | "ArrowLeft" when ff -> moveTo (Position.left pos) sheet
-              | "ArrowRight" when ff -> moveTo (Position.right pos) sheet
+              | "ArrowLeft" when not ff -> moveTo (Position.left pos) sheet
+              | "ArrowRight" when not ff -> moveTo (Position.right pos) sheet
 
               // HACK - otherwise cancells edit for some reason
               | " " when cell.Input.Length = 0 -> e.preventDefault()
