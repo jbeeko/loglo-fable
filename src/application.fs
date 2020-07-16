@@ -160,6 +160,8 @@ module Application =
     //    - ?
     // NOTE: all the above is true for both the edit bar and the in cell editor
 
+    // TODO Delete key blanks existing content but on leaving the content is still there.
+
 
     // TODO not getting cursor in edit bar
     let moveTo pos sheet = 
