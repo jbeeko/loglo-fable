@@ -186,7 +186,6 @@ module Application =
             | _ -> prop.style [style.borderRadius 0]
             prop.autoFocus true
             prop.type'.text
-            prop.selected true
             prop.value cell.Input
             prop.onKeyDown (fun e ->
               match e.key with
@@ -263,8 +262,8 @@ module Application =
           let alert = List.exists (fun v -> match v with | Error (p, _) when p = pos -> true | _ -> false) stack
           let txt = System.String.Join(", ", txts)
           prop.colSpan 6
-          prop.text (sprintf "[%s" txt)
-          if alert then prop.style [style.color "Red"]]]//color "#Red"]]]
+          prop.text ("[" + txt)
+          if alert then prop.style [style.color "Red"]]]
       | _ ->
         Html.tr [
           topLeft
@@ -300,7 +299,9 @@ module Application =
         | _, _-> style.backgroundColor "LightYellow"
 
     Html.td [
-        match Cell.value cell with | Error _ -> prop.style [bgStyle; style.color "Red"] | _ -> prop.style[bgStyle]
+        match Cell.value cell with
+          | Error _ -> prop.style [bgStyle; style.color "Red"]
+          | _ -> prop.style[bgStyle]
         prop.onClick (fun _ -> dispatch(StartEdit(pos, cell)))
         prop.text (match sheet.DisplayMode with | Values -> content cell | Inputs -> cell.Input)]
 
