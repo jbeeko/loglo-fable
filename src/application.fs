@@ -5,6 +5,11 @@
 // *  unfocused selection should be more obvious
 // *  edit bar should be reactive columns so the input stack is continguous 
 //    with the edit field and then contiguous with the output. 
+//  * Arrow down though filled cells shits the sheet up
+//  * Refactoring needed
+//    - Edit state should not be part of the sheet, there should be a "State" type on
+//      in the application that manages state of the application
+//      Now just edit state, but in the future things like hidden rows etc.
 
 
 // ----------------------------------------------------------------------------
@@ -28,7 +33,7 @@ module Application =
     | StartEdit of (Position*Cell)
     | EndEdit of bool
     | ToggleDisplayMode
-    | UpdateCells of Position * string
+    | UpdateCell of Position * string
     | UpdateEditValue of Position * string
 
   let update msg sheet =
@@ -43,11 +48,11 @@ module Application =
 
       let sheet' = 
         match sheet.EditState with
-        | Some es when es.Pos = pos && not es.FullFocus -> 
-          { sheet with EditState = Some {es with FullFocus = true} }
-        | Some es when es.Pos = pos && es.FullFocus -> sheet
+        | Some es when es.Pos = pos && es.Focus <> FullFocus -> 
+          { sheet with EditState = Some {es with Focus = FullFocus} }
+        | Some es when es.Pos = pos && es.Focus = FullFocus -> sheet
         | _  -> 
-          { sheet with EditState = Some {Pos = pos; Cell = cell; Orig = cell; FullFocus = false} }
+          { sheet with EditState = Some {Pos = pos; Cell = cell; Orig = cell; Focus = Initial} }
       sheet', Cmd.Empty
     | EndEdit cancel -> 
       match sheet.EditState, cancel with 
@@ -58,12 +63,16 @@ module Application =
       match sheet.DisplayMode with 
       | Inputs -> {sheet with DisplayMode = Values }, Cmd.Empty
       | Values -> {sheet with DisplayMode = Inputs}, Cmd.Empty
-    | UpdateCells (pos, value) ->
+    | UpdateCell (pos, value) ->
         let sheet = Evaluator.recalc pos sheet false value
         sheet, Cmd.Empty
     | UpdateEditValue (pos, value) ->
         let sheet' = Evaluator.recalc pos sheet true value 
-        sheet', Cmd.Empty
+        let editState =
+          match sheet'.EditState with
+          | Some es when es.Focus = Initial -> Some {es with Focus = PartialFocus} 
+          | es -> es
+        {sheet' with EditState = editState}, Cmd.Empty
 
 
   // ----------------------------------------------------------------------------
@@ -134,20 +143,25 @@ module Application =
 
 
   let renderCellEditor colSpan dispatch sheet =
-    // TODO - State machine for editing as follows:
-    // * on click
+    // State machine for editing as follows:
+    // * on initial click before typeing Focus = Initial
     //    - no insertion point
     //    - pointer is arrow
     //    - field highlighted
-    //    - all existing text is implicitly selected so typeing deletes it all
-    //    - after typing insertion point is show
+    //    - all existing text is implicitly (or explicit?) selected so typeing deletes it all
+    //    - after typing insertion point is shown
     //    - right/left arrow keys navigate out of cell
-    // * on second click 
+    //    - furhter input is gathered up
+    // * on second click, before or after typing; Focus = FullFocus
     //    - insertion point shown at point of click
     //    - pointer is bar
     //    - right/left arrow keys navigate text
+    // * on doubleClick
+    //    - ?
     // NOTE: all the above is true for both the edit bar and the in cell editor
 
+
+    // TODO not getting cursor in edit bar
     let moveTo pos sheet = 
       if Sheet.contains pos sheet
       then 
@@ -155,20 +169,22 @@ module Application =
         dispatch (StartEdit (pos, c))
 
     match sheet.EditState with
-    | Some {Pos = pos; Cell = cell; FullFocus = ff} ->
+    | Some {Pos = pos; Cell = cell; Focus = focus} ->
       Html.td [
         prop.className [Bulma.IsSize7]
         prop.style [style.padding 0]
         prop.colSpan colSpan
         prop.children [
           Html.input [
-            match cell.Type with 
-            | Child -> prop.readOnly true
-            | _ -> prop.readOnly false
+            // prop.readOnly (cell.Type = Child) // scrolls sheet!?
             prop.className [Bulma.IsSize7; Bulma.Input; if colSpan = 1 then Bulma.IsFocused else ""]
-            prop.style [style.borderRadius 0]
+            match sheet.EditState with
+            | Some es when es.Focus = Initial || es.Focus = PartialFocus ->
+              prop.style [style.borderRadius 0; (Interop.mkStyle "caret-color" "transparent"); style.cursor.defaultCursor]
+            | _ -> prop.style [style.borderRadius 0]
             prop.autoFocus true
             prop.type'.text
+            prop.selected true
             prop.value cell.Input
             prop.onKeyDown (fun e -> 
               match e.key with
@@ -187,19 +203,27 @@ module Application =
 
               | "ArrowUp" -> moveTo (Position.up pos) sheet
               | "ArrowDown" -> moveTo (Position.down pos) sheet
-              | "ArrowLeft" when not ff -> moveTo (Position.left pos) sheet
-              | "ArrowRight" when not ff -> moveTo (Position.right pos) sheet
+              | "ArrowLeft" when focus <> FullFocus -> moveTo (Position.left pos) sheet
+              | "ArrowRight" when focus <> FullFocus -> moveTo (Position.right pos) sheet
 
               // HACK - otherwise cancells edit for some reason
               | " " when cell.Input.Length = 0 -> e.preventDefault()
-              | _ -> () )
 
-            prop.onClick (fun _ -> 
-              match colSpan with
-              | 1 -> dispatch(StartEdit(pos, cell))
-              | _ -> () )
+              | _ -> 
+                match sheet.EditState with
+                | Some es when es.Focus = Initial -> 
+                  dispatch (UpdateEditValue(pos, ""))
+                | _ -> ())
+
+            prop.onFocus (fun e -> ())
+              // TODO - decide if text should be selected on entry
+              // does not fire when arrowed into.
+              // if colSpan = 1 then
+              //   (e.currentTarget :?> Browser.Types.HTMLInputElement).select())
+
+            prop.onClick (fun e -> dispatch(StartEdit(pos, cell)))
             prop.onTextChange (fun e -> 
-              dispatch (UpdateCells(pos, e))) // dispatch on value accepted 
+              dispatch (UpdateCell(pos, e))) // dispatch on value accepted 
             prop.onInput (fun e ->            // dispatch on each keystroke
               let txt = (e.currentTarget :?> Browser.Types.HTMLInputElement).value
               dispatch(UpdateEditValue(pos, txt)))]]]

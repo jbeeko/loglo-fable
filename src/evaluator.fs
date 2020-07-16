@@ -4,7 +4,11 @@
 //  * need to add tests for the various primatives that can be run automatically
 //  * need to add a tests that takes a map of the cells and then builds a new shee
 //    adding the values in random order and ensuring the same value results. 
+//  * editing child cells should be an error
 
+//  * Refactoring needed
+//    - Edit state should not be part of the sheet, there should be a "State" type on
+//      in the application
 
 // ----------------------------------------------------------------------------
 // LOGLO EVALUATOR
@@ -112,14 +116,19 @@ module Domain =
       let v, _ = peek cell
       v
 
-  // TODO - use this for Active rather than the tupple. Then implmement
-  // The proposed editing changes in application.
+
+  type EditMode =
+  | Initial
+  | PartialFocus
+  | FullFocus
+
   type EditState = {
     Pos: Position
     Cell: Cell
-    FullFocus: bool
+    Focus: EditMode
     Orig: Cell
   }
+  
   type DisplayMode = 
   | Inputs
   | Values
