@@ -208,18 +208,19 @@ module Application =
               | "ArrowLeft" when focus <> FullFocus -> moveTo (Position.left pos) sheet
               | "ArrowRight" when focus <> FullFocus -> moveTo (Position.right pos) sheet
 
-              // HACK - otherwise cancells edit for some reason
-              | " " when cell.Input.Length = 0 -> e.preventDefault()
-
-              | _ -> 
+              // Initial key stroke clears existing contact (as in Excel and numbers)
+              // Don't clear for function, option alt etc.
+              | key when key.Length = 1 || key = "Backspace" -> 
                 match sheet.EditState with
                 | Some es when es.Focus = Initial -> 
                   dispatch (UpdateEditValue(pos, ""))
-                | _ -> ())
+                  if key = "Backspace" then dispatch (UpdateCell(pos, "")) else ()
+                | _ -> ()
+              | _ -> ())
 
             prop.onFocus (fun e -> ())
               // TODO - decide if text should be selected on entry
-              // does not fire when arrowed into.
+              // TODO - focust does not does not fire when arrowed into.
               // if colSpan = 1 then
               //   (e.currentTarget :?> Browser.Types.HTMLInputElement).select())
 
