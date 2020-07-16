@@ -6,10 +6,6 @@
 //    adding the values in random order and ensuring the same value results.
 //  * editing child cells should be an error
 
-//  * Refactoring needed
-//    - Edit state should not be part of the sheet, there should be a "State" type on
-//      in the application
-
 // ----------------------------------------------------------------------------
 // LOGLO EVALUATOR
 // Evaluator of Loglo language as defined by: Avi Bryant's http://loglo.app
@@ -118,27 +114,9 @@ module Domain =
       v
 
 
-  type EditMode =
-  | Initial
-  | PartialFocus
-  | FullFocus
-
-  type EditState = {
-    Pos: Position
-    Cell: Cell
-    Focus: EditMode
-    Orig: Cell
-  }
-
-  type DisplayMode =
-  | Inputs
-  | Values
-
   type Sheet = {
     Rows : int list
     Cols : char list
-    EditState : EditState option
-    DisplayMode: DisplayMode
     Cells : Map<Position, Cell>
     Definitions : Map<Value, Value>
   }
@@ -434,10 +412,5 @@ module Evaluator =
         else []
       upsert pos sheet {Input = input; Stack = []; DependsOn = deps; Type = Input}
     if cellOnly
-      then
-        let sheet' = parseEvaluateCell pos (update pos sheet input)
-        let cell = Sheet.find pos sheet'
-        match sheet.EditState with
-        | Some es -> {sheet with EditState = Some {es with Pos = pos; Cell = {cell with Input = input}}}
-        | None -> sheet
+      then parseEvaluateCell pos (update pos sheet input)
       else basicRecalc (Set.empty) pos (update pos sheet input)

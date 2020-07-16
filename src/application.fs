@@ -1,11 +1,10 @@
 //TODO:
 // *  row select
 // *  row insert
-// *  highlight row/coll where selection is
 // *  edit bar editor should not get blue focus
 // *  edit bar should be reactive columns so the input stack is continguous
 //    with the edit field and then contiguous with the output.
-//  * Arrow down though filled cells shits the sheet up
+//  * Arrow down though readonly cells shits the sheet up
 //  * Refactoring needed
 //    - Edit state should not be part of the sheet, there should be a "State" type on
 //      in the application that manages state of the application
@@ -25,54 +24,72 @@ module Application =
 
   open Domain
 
+  type EditMode =
+  | Initial
+  | PartialFocus
+  | FullFocus
+
+  type EditState = {
+    Pos: Position
+    Cell: Cell
+    Focus: EditMode
+    Orig: Cell
+  }
+
+  type DisplayMode =
+  | Inputs
+  | Values
+
+  type State = {
+    Sheet: Sheet
+    EditState: EditState option
+    DisplayMode: DisplayMode
+  }
 
   // ----------------------------------------------------------------------------
   // MESSAGE HANDLING
   // ----------------------------------------------------------------------------
   type Message =
-    | StartEdit of (Position*Cell)
+    | StartEdit of Position
     | EndEdit of bool
     | ToggleDisplayMode
     | UpdateCell of Position * string
     | UpdateEditValue of Position * string
 
-  let update msg sheet =
+  let update msg state =
     match msg with
-    | StartEdit (pos, cell) ->
-      //{ sheet with EditState = Some {Pos = pos; Cell = cell; Orig = cell; FullFocus = true} }, Cmd.Empty
-      // TODO - is this right or should these cells be arrowed over, or not be selectable at all?
-      // match cell.Type with
-      // | Child -> sheet, Cmd.Empty
-      // | _ ->
-      //   { sheet with EditState = Some {Pos = pos; Cell = cell; FullFocus = true} }, Cmd.Empty
-
-      let sheet' =
-        match sheet.EditState with
+    | StartEdit pos ->
+      let cell = Sheet.find pos state.Sheet
+      let state' =
+        match state.EditState with
         | Some es when es.Pos = pos && es.Focus <> FullFocus ->
-          { sheet with EditState = Some {es with Focus = FullFocus} }
-        | Some es when es.Pos = pos && es.Focus = FullFocus -> sheet
+          { state with EditState = Some {es with Focus = FullFocus} }
+        | Some es when es.Pos = pos && es.Focus = FullFocus -> state
         | _  ->
-          { sheet with EditState = Some {Pos = pos; Cell = cell; Orig = cell; Focus = Initial} }
-      sheet', Cmd.Empty
+          { state with EditState = Some {Pos = pos; Cell = cell; Orig = cell; Focus = Initial} }
+      state', Cmd.Empty
     | EndEdit cancel ->
-      match sheet.EditState, cancel with
+      match state.EditState, cancel with
       | Some es, true ->
-        {Sheet.upsert es.Pos sheet es.Orig with EditState = None}, Cmd.Empty
-      | _, _ -> sheet, Cmd.Empty
+        {state with Sheet = Sheet.upsert es.Pos state.Sheet es.Orig; EditState = None}, Cmd.Empty
+      | _, _ -> state, Cmd.Empty
     | ToggleDisplayMode ->
-      match sheet.DisplayMode with
-      | Inputs -> {sheet with DisplayMode = Values }, Cmd.Empty
-      | Values -> {sheet with DisplayMode = Inputs}, Cmd.Empty
+      match state.DisplayMode with
+      | Inputs -> {state with DisplayMode = Values }, Cmd.Empty
+      | Values -> {state with DisplayMode = Inputs}, Cmd.Empty
     | UpdateCell (pos, value) ->
-        let sheet = Evaluator.recalc pos sheet false value
-        sheet, Cmd.Empty
+        let sheet = Evaluator.recalc pos state.Sheet false value
+        {state with Sheet = sheet}, Cmd.Empty
     | UpdateEditValue (pos, value) ->
-        let sheet' = Evaluator.recalc pos sheet true value
+        let cell =
+          Evaluator.recalc pos state.Sheet true value
+          |> Sheet.find pos
         let editState =
-          match sheet'.EditState with
-          | Some es when es.Focus = Initial -> Some {es with Focus = PartialFocus}
-          | es -> es
-        {sheet' with EditState = editState}, Cmd.Empty
+          match state.EditState with
+          | Some es when es.Focus = Initial -> Some {es with Focus = PartialFocus; Cell = {cell with Input = value}}
+          | Some es -> Some {es with Cell = {cell with Input = value}}
+          | None -> None
+        {state with EditState = editState}, Cmd.Empty
 
 
   // ----------------------------------------------------------------------------
@@ -142,7 +159,7 @@ module Application =
 
 
 
-  let renderCellEditor colSpan dispatch sheet =
+  let renderCellEditor colSpan dispatch state =
     // State machine for editing as follows:
     // * on initial click before typeing Focus = Initial
     //    - no insertion point
@@ -164,9 +181,9 @@ module Application =
       if Sheet.contains pos sheet
       then
         let c = Sheet.find pos sheet
-        dispatch (StartEdit (pos, c))
+        dispatch (StartEdit pos)
 
-    match sheet.EditState with
+    match state.EditState with
     | Some {Pos = pos; Cell = cell; Focus = focus} ->
       Html.td [
         prop.className [Bulma.IsSize7]
@@ -178,7 +195,7 @@ module Application =
             prop.className [Bulma.IsSize7; Bulma.Input; if colSpan = 1 then Bulma.IsFocused]
             prop.style [
               style.borderRadius 0
-              match sheet.EditState with
+              match state.EditState with
                 | Some es when es.Focus = Initial ->
                   (Interop.mkStyle "caret-color" "transparent")
                   style.cursor.defaultCursor
@@ -192,25 +209,24 @@ module Application =
               | "`" when e.ctrlKey -> dispatch ToggleDisplayMode
               | "Escape" -> dispatch (EndEdit true)
 
-              | "Enter" when e.shiftKey ->moveTo (Position.up pos) sheet
-              | "Enter" -> moveTo (Position.down pos) sheet
+              | "Enter" when e.shiftKey ->dispatch(StartEdit (Position.up pos))
+              | "Enter" -> dispatch(StartEdit (Position.down pos))
 
               | "Tab" when e.shiftKey ->
                 e.preventDefault()
-                moveTo (Position.left pos) sheet
+                dispatch(StartEdit (Position.left pos))
               | "Tab" ->
                 e.preventDefault()
-                moveTo (Position.right pos) sheet
+                dispatch(StartEdit (Position.right pos))
 
-              | "ArrowUp" -> moveTo (Position.up pos) sheet
-              | "ArrowDown" -> moveTo (Position.down pos) sheet
-              | "ArrowLeft" when focus <> FullFocus -> moveTo (Position.left pos) sheet
-              | "ArrowRight" when focus <> FullFocus -> moveTo (Position.right pos) sheet
-
+              | "ArrowUp" -> dispatch(StartEdit (Position.up pos))
+              | "ArrowDown" -> dispatch(StartEdit (Position.down pos))
+              | "ArrowLeft" when focus <> FullFocus -> dispatch(StartEdit (Position.left pos))
+              | "ArrowRight" when focus <> FullFocus -> dispatch(StartEdit (Position.right pos))
               // Initial key stroke clears existing contact (as in Excel and numbers)
               // Don't clear for function, option alt etc.
               | key when key.Length = 1 || key = "Backspace" ->
-                match sheet.EditState with
+                match state.EditState with
                 | Some es when es.Focus = Initial ->
                   dispatch (UpdateEditValue(pos, ""))
                   if key = "Backspace" then dispatch (UpdateCell(pos, "")) else ()
@@ -223,7 +239,7 @@ module Application =
               // if colSpan = 1 then
               //   (e.currentTarget :?> Browser.Types.HTMLInputElement).select())
 
-            prop.onClick (fun e -> dispatch(StartEdit(pos, cell)))
+            prop.onClick (fun e -> dispatch(StartEdit pos))
             prop.onTextChange (fun e ->
               dispatch (UpdateCell(pos, e))) // dispatch on value accepted
             prop.onInput (fun e ->            // dispatch on each keystroke
@@ -232,26 +248,26 @@ module Application =
     | _ -> failwith "should not happen"
 
   let topLeft = Html.td [prop.style [style.width 45]]
-  let renderEditBar dispatch sheet =
-    match sheet.EditState with
+  let renderEditBar dispatch state =
+    match state.EditState with
     | Some {Pos = pos; Cell = cell} ->
       Html.tr [
         topLeft
         // Pre stack
         Html.td [
-          let stack = Sheet.findStackLeft pos sheet
+          let stack = Sheet.findStackLeft pos state.Sheet
           let txt = System.String.Join(", ", stack |> List.rev |> List.map printValue)
           prop.colSpan 1
           prop.text (sprintf "[%s" txt)
           prop.style [style.textAlign.right]]
 
-        renderCellEditor (sheet.Cols.Length - 7) dispatch sheet
+        renderCellEditor (state.Sheet.Cols.Length - 7) dispatch state
 
         // Post stack
         Html.td [
           let stack =
             match cell.Input.Trim() with
-            | "" -> Sheet.findStackLeft pos sheet
+            | "" -> Sheet.findStackLeft pos state.Sheet
             | _ -> cell.Stack
           let txts =
             stack |> List.rev
@@ -268,15 +284,15 @@ module Application =
         Html.tr [
           topLeft
           Html.td [prop.text "[ "; prop.colSpan 1; prop.style [style.textAlign.right]]
-          Html.td [prop.colSpan (sheet.Cols.Length - 7)]
+          Html.td [prop.colSpan (state.Sheet.Cols.Length - 7)]
           Html.td [prop.text "[ "; prop.colSpan 6]]
 
 
-  let renderValue dispatch pos sheet =
+  let renderValue dispatch pos state =
     // TODO - should draw Paths as SVG on a canvas, others as str
     // TODO - split cell, with stack and value below, any SVG above
     //        This will give more context.
-    let cell = (Sheet.find pos sheet)
+    let cell = (Sheet.find pos state.Sheet)
     let content cell =
       let value =
         match (Cell.value cell) with
@@ -303,23 +319,23 @@ module Application =
         | Nil, _ -> style.backgroundColor "White"
         | _, _-> style.backgroundColor "LightYellow"]
 
-      prop.onClick (fun _ -> dispatch(StartEdit(pos, cell)))
-      prop.text (match sheet.DisplayMode with | Values -> content cell | Inputs -> cell.Input)]
+      prop.onClick (fun _ -> dispatch(StartEdit pos))
+      prop.text (match state.DisplayMode with | Values -> content cell | Inputs -> cell.Input)]
 
   let renderCell dispatch pos sheet =
     match sheet.EditState with
     | Some {Pos = p} when p = pos -> renderCellEditor 1 dispatch sheet
     | _ -> renderValue dispatch pos sheet
 
-  let render sheet dispatch =
+  let render state dispatch =
 
-    let editBar = renderEditBar dispatch sheet
+    let editBar = renderEditBar dispatch state
 
     let colLabel h =
       Html.th [
         prop.style [
           style.backgroundColor "LightGray"
-          match sheet.EditState with
+          match state.EditState with
           | Some {Pos = Position (c, _)} when c = h ->
               style.borderBottomWidth 2; style.borderBottomColor "RoyalBlue"
           | _ -> ()
@@ -329,19 +345,19 @@ module Application =
       Html.th [
         prop.style [
           style.backgroundColor "LightGray"
-          match sheet.EditState with
+          match state.EditState with
           | Some {Pos = Position (_, r)} when r = i ->
               style.borderBottomWidth 2; style.borderBottomColor "RoyalBlue"
           | _ -> ()
         ]
 
         prop.text (string i)]
-    let colHeaders = Html.tr (topLeft::(sheet.Cols |> List.map colLabel))
+    let colHeaders = Html.tr (topLeft::(state.Sheet.Cols |> List.map colLabel))
 
     let cells n =
-      let cells = sheet.Cols |> List.mapi (fun i h -> renderCell dispatch (Position (h, n)) sheet)
+      let cells = state.Sheet.Cols |> List.mapi (fun i h -> renderCell dispatch (Position (h, n)) state)
       (rowLabel n) :: cells
-    let rows = sheet.Rows |> List.map (cells >> Html.tr)
+    let rows = state.Sheet.Rows |> List.map (cells >> Html.tr)
 
     Html.div [
       prop.style [style.margin 10; style.borderStyle.solid; style.borderWidth 1; style.borderColor "DarkGray"]
@@ -362,10 +378,11 @@ module Application =
     ]
 
   let initialize () =
-    { Cols = ['A' .. 'J']
-      Rows = [1 .. 20]
-      EditState = None
+    { Sheet =
+        { Cols = ['A' .. 'J']
+          Rows = [1 .. 20]
+          Definitions = Map.empty
+          Cells = Map.empty }
       DisplayMode = Values
-      Definitions = Map.empty
-      Cells = Map.empty },
-    Cmd.Empty
+      EditState = None}, Cmd.Empty
+
