@@ -3,7 +3,7 @@
 //  * need to handle "shadowing" of bindings somehow
 //  * need to add tests for the various primatives that can be run automatically
 //  * need to add a tests that takes a map of the cells and then builds a new shee
-//    adding the values in random order and ensuring the same value results. 
+//    adding the values in random order and ensuring the same value results.
 //  * editing child cells should be an error
 
 //  * Refactoring needed
@@ -37,27 +37,28 @@ module Domain =
   type Paths = Path list
 
   type Value =
-    | Int of int
-    | Text of string
-    | Name of string
     | Binding of string
     | Code of Expr list
-    | Paths of Path list
     | Error of Position*Error
+    | Int of int
+    | Name of string
     | Nil
+    | Paths of Path list
+    | Text of string
   and Error =
-    | ParseFailure of string
-    | StackUnderflow of int*int
-    | ReferenceCycle of Position list
-    | SelfReference
     | DivideByZero of int
-    | MissingDefinition of string
     | DuplicateDefinition of string*Value
-    | ReferenceOffSheet of Position
+    | FilledCellOverwritten
     | InvalidParams of string*((Value*string) option list)*(Value list)
+    | MissingDefinition of string
     | MissingItem of Position
     | NotImplemented of string
-    | FilledCellOverwritten
+    | ParseFailure of string
+    | ReadOnly
+    | ReferenceCycle of Position list
+    | ReferenceOffSheet of Position
+    | SelfReference
+    | StackUnderflow of int*int
 
 
   type CellType =
@@ -128,8 +129,8 @@ module Domain =
     Focus: EditMode
     Orig: Cell
   }
-  
-  type DisplayMode = 
+
+  type DisplayMode =
   | Inputs
   | Values
 
@@ -146,7 +147,7 @@ module Domain =
 
     // Misc sheet manipulation functions
     let contains pos sheet =
-      let (Position (c, r)) =  pos 
+      let (Position (c, r)) =  pos
       List.contains r sheet.Rows && List.contains c sheet.Cols
 
     let upsert pos sheet cell =
@@ -171,7 +172,7 @@ module Domain =
         //| None -> [] // If a blank cell should interrupt the stack
         | None -> findStackLeft pos' sheet
       else []
-    
+
     let delete pos sheet =
       if Map.containsKey pos sheet.Cells
       then {sheet with Cells = Map.remove pos sheet.Cells}
@@ -236,8 +237,8 @@ module Domain =
           if contains (left pos) sheet then [left pos]
           else []
         let cell = {
-            Input = (sprintf "%c%i::%i" c r i); 
-            Stack = (findStackLeft pos sheet); 
+            Input = (sprintf "%c%i::%i" c r i);
+            Stack = (findStackLeft pos sheet);
             DependsOn = parentPos::deps
             Type = Child}
         upsert pos sheet cell
@@ -304,8 +305,8 @@ module Domain =
 module Evaluator =
   open Domain
   open Parser
-  open Sheet
   open Position
+  open Sheet
 
 
   // Evaluate a single expression returning the result on the stack.
@@ -383,12 +384,12 @@ module Evaluator =
     | "/" -> div pos sheet
     | "neg" -> neg pos sheet
     // Geometry primatives
-    | "rotate" -> error (NotImplemented "rotate") pos sheet
-    | "union" -> error (NotImplemented "union") pos sheet
-    | "intersect" -> error (NotImplemented "intersect") pos sheet
     | "close" -> error (NotImplemented "close") pos sheet
+    | "intersect" -> error (NotImplemented "intersect") pos sheet
     | "line" -> error (NotImplemented "line") pos sheet
+    | "rotate" -> error (NotImplemented "rotate") pos sheet
     | "scale" -> error (NotImplemented "scale") pos sheet
+    | "union" -> error (NotImplemented "union") pos sheet
 
     | _ -> error (MissingDefinition prim) pos sheet
 
@@ -432,12 +433,11 @@ module Evaluator =
         if contains (left pos) sheet then [left pos]
         else []
       upsert pos sheet {Input = input; Stack = []; DependsOn = deps; Type = Input}
-    if cellOnly 
-      then 
+    if cellOnly
+      then
         let sheet' = parseEvaluateCell pos (update pos sheet input)
         let cell = Sheet.find pos sheet'
-        match sheet.EditState with 
+        match sheet.EditState with
         | Some es -> {sheet with EditState = Some {es with Pos = pos; Cell = {cell with Input = input}}}
         | None -> sheet
       else basicRecalc (Set.empty) pos (update pos sheet input)
- 
