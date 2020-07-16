@@ -2,7 +2,7 @@
 // *  row select
 // *  row insert
 // *  highlight row/coll where selection is
-// *  unfocused selection should be more obvious
+// *  edit bar editor should not get blue focus
 // *  edit bar should be reactive columns so the input stack is continguous
 //    with the edit field and then contiguous with the output.
 //  * Arrow down though filled cells shits the sheet up
@@ -160,10 +160,6 @@ module Application =
     //    - ?
     // NOTE: all the above is true for both the edit bar and the in cell editor
 
-    // TODO Delete key blanks existing content but on leaving the content is still there.
-
-
-    // TODO not getting cursor in edit bar
     let moveTo pos sheet =
       if Sheet.contains pos sheet
       then
@@ -179,11 +175,15 @@ module Application =
         prop.children [
           Html.input [
             // prop.readOnly (cell.Type = Child) // scrolls sheet!?
-            prop.className [Bulma.IsSize7; Bulma.Input; if colSpan = 1 then Bulma.IsFocused else ""]
-            match sheet.EditState with
-            | Some es when es.Focus = Initial || es.Focus = PartialFocus ->
-              prop.style [style.borderRadius 0; (Interop.mkStyle "caret-color" "transparent"); style.cursor.defaultCursor]
-            | _ -> prop.style [style.borderRadius 0]
+            prop.className [Bulma.IsSize7; Bulma.Input; if colSpan = 1 then Bulma.IsFocused]
+            prop.style [
+              style.borderRadius 0
+              match sheet.EditState with
+                | Some es when es.Focus = Initial ->
+                  (Interop.mkStyle "caret-color" "transparent")
+                  style.cursor.defaultCursor
+                | _ -> ()
+            ]
             prop.autoFocus true
             prop.type'.text
             prop.value cell.Input
@@ -292,18 +292,19 @@ module Application =
             else "Err"
         | Nil -> ""
       value
-    let bgStyle =
-        match Cell.value cell, cell.Type with
-        | _, Child-> style.backgroundColor "AliceBlue"
-        | Nil, _ -> style.backgroundColor "White"
-        | _, _-> style.backgroundColor "LightYellow"
 
     Html.td [
-        match Cell.value cell with
-          | Error _ -> prop.style [bgStyle; style.color "Red"]
-          | _ -> prop.style[bgStyle]
-        prop.onClick (fun _ -> dispatch(StartEdit(pos, cell)))
-        prop.text (match sheet.DisplayMode with | Values -> content cell | Inputs -> cell.Input)]
+      prop.style [
+        match Cell.value cell, cell.Type with
+        | _, Child-> style.backgroundColor "AliceBlue"
+        | Error _, _ ->
+            style.color "Red"
+            style.backgroundColor "LightYellow"
+        | Nil, _ -> style.backgroundColor "White"
+        | _, _-> style.backgroundColor "LightYellow"]
+
+      prop.onClick (fun _ -> dispatch(StartEdit(pos, cell)))
+      prop.text (match sheet.DisplayMode with | Values -> content cell | Inputs -> cell.Input)]
 
   let renderCell dispatch pos sheet =
     match sheet.EditState with
@@ -316,17 +317,24 @@ module Application =
 
     let colLabel h =
       Html.th [
-        match sheet.EditState with
-        | Some {Pos = Position (c, _)} when c = h ->
-          prop.style [style.backgroundColor "LightGray"; style.borderBottomWidth 2; style.borderBottomColor "RoyalBlue"]
-        | _ -> prop.style [style.backgroundColor "LightGray"]
+        prop.style [
+          style.backgroundColor "LightGray"
+          match sheet.EditState with
+          | Some {Pos = Position (c, _)} when c = h ->
+              style.borderBottomWidth 2; style.borderBottomColor "RoyalBlue"
+          | _ -> ()
+        ]
         prop.text (string h)]
     let rowLabel i =
       Html.th [
-        match sheet.EditState with
-        | Some {Pos = Position (_, r)} when r = i ->
-          prop.style [style.backgroundColor "LightGray"; style.borderRightWidth 2; style.borderRightColor "RoyalBlue"]
-        | _ -> prop.style [style.backgroundColor "LightGray"]
+        prop.style [
+          style.backgroundColor "LightGray"
+          match sheet.EditState with
+          | Some {Pos = Position (_, r)} when r = i ->
+              style.borderBottomWidth 2; style.borderBottomColor "RoyalBlue"
+          | _ -> ()
+        ]
+
         prop.text (string i)]
     let colHeaders = Html.tr (topLeft::(sheet.Cols |> List.map colLabel))
 
@@ -336,7 +344,7 @@ module Application =
     let rows = sheet.Rows |> List.map (cells >> Html.tr)
 
     Html.div [
-      prop.style [style.margin 10; style.borderStyle.solid  ; style.borderWidth 1; style.borderColor "DarkGray"]
+      prop.style [style.margin 10; style.borderStyle.solid; style.borderWidth 1; style.borderColor "DarkGray"]
       prop.children [
         Html.table [
           prop.style [style.tableLayout.fixed']
