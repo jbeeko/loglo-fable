@@ -1,6 +1,5 @@
 // BUGS
 //  * need to delete bindings when def gets removed, kind of how unfill happens
-//  * need to handle "shadowing" of bindings somehow
 //  * need to add tests for the various primatives that can be run automatically
 //  * need to add a tests that takes a map of the cells and then builds a new shee
 //    adding the values in random order and ensuring the same value results.
