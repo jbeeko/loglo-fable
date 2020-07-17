@@ -193,6 +193,7 @@ module Application =
             prop.className [Bulma.IsSize7; Bulma.Input; if colSpan = 1 then Bulma.IsFocused]
             prop.style [
               style.borderRadius 0
+              style.fontWeight 500
               match state.EditState with
                 | Some es when es.Focus = Initial ->
                   (Interop.mkStyle "caret-color" "transparent")
@@ -285,45 +286,78 @@ module Application =
           Html.td [prop.colSpan (state.Sheet.Cols.Length - 7)]
           Html.td [prop.text "[ "; prop.colSpan 6]]
 
+  let private colourStyles cell = [
+      match Cell.value cell, cell.Type with
+      | _, Child-> style.backgroundColor "AliceBlue"
+      | Error _, _ ->
+          style.color "Red"
+          style.backgroundColor "LightYellow"
+      | Nil, _ -> style.backgroundColor "White"
+      | _, _-> style.backgroundColor "LightYellow"]
 
   let renderValue dispatch pos state =
     // TODO - should draw Paths as SVG on a canvas, others as str
     // TODO - split cell, with stack and value below, any SVG above
     //        This will give more context.
     let cell = (Sheet.find pos state.Sheet)
-    let content cell =
-      let value =
-        match (Cell.value cell) with
-        | Int i as v -> printValue v
-        | Text s as v -> printValue v
-        | Code _ as v -> printValue v
-        | Name s as v -> printValue v
-        | Binding s as v -> printValue v
-        | Paths p as v -> printValue v
-        | Error (p, e) ->
-            if p = pos
-            then errorMsg (p, e)
-            else "Err"
+    Html.td [
+      prop.onClick (fun _ -> dispatch(StartEdit pos))
+      prop.style ([style.whitespace.nowrap; style.overflow.hidden; style.textOverflow.ellipsis]@(colourStyles cell))
+      prop.text
+        (match (Cell.value cell) with
+        | Paths p -> printValue (Paths p)
+        | Error (p, e) -> if p = pos then errorMsg (p, e) else "Err"
         | Nil -> ""
-      value
+        | v -> printValue v)]
+
+  let renderInputs dispatch pos state =
+    // TODO - show input to left and stack in gray to right
+    let cell = (Sheet.find pos state.Sheet)
+    let stack =
+      match cell.Input.Trim() with
+      | "" -> []//Sheet.findStackLeft pos state.Sheet
+      | _ -> cell.Stack
+    let txts =
+      stack |> List.rev
+      |> List.map (fun v ->
+        match v with
+        | Error (p, e) when pos = p ->  sprintf "(%s)" (errorMsg (p, e))
+        | _ -> printValue v)
+    let alert = List.exists (fun v -> match v with | Error (p, _) when p = pos -> true | _ -> false) stack
+    let txt = System.String.Join(", ", txts)
 
     Html.td [
-      prop.style [
-        match Cell.value cell, cell.Type with
-        | _, Child-> style.backgroundColor "AliceBlue"
-        | Error _, _ ->
-            style.color "Red"
-            style.backgroundColor "LightYellow"
-        | Nil, _ -> style.backgroundColor "White"
-        | _, _-> style.backgroundColor "LightYellow"]
-
       prop.onClick (fun _ -> dispatch(StartEdit pos))
-      prop.text (match state.DisplayMode with | Values -> content cell | Inputs -> cell.Input)]
+      prop.style (colourStyles cell)
+      prop.children [
+        Html.div [
+          prop.style [style.display.flex] //; style.margin (length.em 0)]
+          prop.children [
+            Html.div [
+              prop.style [
+                style.textAlign.left
+                style.flexGrow 1
+                style.flexShrink 0
+                style.fontWeight 500]
+              prop.text cell.Input]
+            Html.div [
+              prop.style [
+                style.textAlign.right
+                style.lineHeight (length.percent 80)
+                style.color "Gray"
+                style.textDecoration.underline
+                style.fontStyle.italic
+                style.flexShrink 1
+                style.whitespace.nowrap
+                style.overflow.hidden
+                style.textOverflow.ellipsis]
+              prop.text txt]]]]]
 
-  let renderCell dispatch pos sheet =
-    match sheet.EditState with
-    | Some {Pos = p} when p = pos -> renderCellEditor 1 dispatch sheet
-    | _ -> renderValue dispatch pos sheet
+  let renderCell dispatch pos state =
+    match state.EditState, state.DisplayMode with
+    | Some {Pos = p}, _ when p = pos -> renderCellEditor 1 dispatch state
+    | _, Values -> renderValue dispatch pos state
+    | _, Inputs -> renderInputs dispatch pos state
 
   let render state dispatch =
 
@@ -345,7 +379,7 @@ module Application =
           style.backgroundColor "LightGray"
           match state.EditState with
           | Some {Pos = Position (_, r)} when r = i ->
-              style.borderBottomWidth 2; style.borderBottomColor "RoyalBlue"
+              style.borderRightWidth 2; style.borderRightColor "RoyalBlue"
           | _ -> ()
         ]
 
