@@ -5,10 +5,6 @@
 // *  edit bar should be reactive columns so the input stack is continguous
 //    with the edit field and then contiguous with the output.
 //  * Arrow down though readonly cells shits the sheet up
-//  * Refactoring needed
-//    - Edit state should not be part of the sheet, there should be a "State" type on
-//      in the application that manages state of the application
-//      Now just edit state, but in the future things like hidden rows etc.
 
 
 // ----------------------------------------------------------------------------
@@ -59,15 +55,17 @@ module Application =
   let update msg state =
     match msg with
     | StartEdit pos ->
-      let cell = Sheet.find pos state.Sheet
-      let state' =
-        match state.EditState with
-        | Some es when es.Pos = pos && es.Focus <> FullFocus ->
-          { state with EditState = Some {es with Focus = FullFocus} }
-        | Some es when es.Pos = pos && es.Focus = FullFocus -> state
-        | _  ->
-          { state with EditState = Some {Pos = pos; Cell = cell; Orig = cell; Focus = Initial} }
-      state', Cmd.Empty
+      if Sheet.contains pos state.Sheet then
+        let cell = Sheet.find pos state.Sheet
+        let state' =
+          match state.EditState with
+          | Some es when es.Pos = pos && es.Focus <> FullFocus ->
+            { state with EditState = Some {es with Focus = FullFocus} }
+          | Some es when es.Pos = pos && es.Focus = FullFocus -> state
+          | _  ->
+            { state with EditState = Some {Pos = pos; Cell = cell; Orig = cell; Focus = Initial} }
+        state', Cmd.Empty
+      else state, Cmd.Empty
     | EndEdit cancel ->
       match state.EditState, cancel with
       | Some es, true ->
