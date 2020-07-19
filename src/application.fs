@@ -267,86 +267,89 @@ module Application =
     match state.EditState with
     | Some es ->
       Html.tr [
-        topLeft
-        Html.td [
-          prop.style [style.borderRightColor color.black]
-          prop.text "controls"]
-        Html.td [
-          prop.colSpan 5
-          prop.style [style.padding 0; style.borderColor color.black; style.borderLeftColor color.black]
-          prop.children [
-            Html.div [
-              prop.style [
-                style.display.flex
-                style.flexBasis.initial]
-              prop.children [
-                Html.div [
-                  let stack = Sheet.findStackLeft es.Pos state.Sheet
-                  prop.text ("[" + (System.String.Join(" ", stack |> List.rev |> List.map printValue)))
-                  prop.style [
-                    style.textAlign.right
-                    style.flexGrow 0
-                    style.flexShrink 2
-                    style.paddingTop 6
-                    style.paddingLeft 6
-                    style.paddingRight 1
-                    style.marginLeft length.auto
-                    style.minWidth (length.percent 20)
-                    style.color color.gray
-                    style.whitespace.nowrap
-                    style.overflow.hidden
-                    style.textOverflow.ellipsis]]
-                (editorInput
-                  [prop.placeholder "Input"]
-                  [ style.paddingLeft 1
-                    style.marginLeft length.auto
-                    style.flexGrow 0
-                    style.flexShrink 2
-                    style.borderLeftStyle borderStyle.dotted
-                    style.borderTopColor color.white
-                    style.borderBottomColor color.white
-                    style.borderLeftStyle borderStyle.dotted
-                    style.borderRightStyle borderStyle.dotted
-                    style.whitespace.nowrap
-                    style.overflow.hidden
-                    style.textOverflow.ellipsis]
-                  [] es dispatch)
-                Html.div [
-                  let txt, err = printStack true es.Pos es.Cell
-                  prop.style [
-                    style.marginLeft length.auto
-                    style.flexGrow 2
-                    style.flexShrink 0
-                    style.paddingTop 6
-                    style.paddingRight 6
-                    style.minWidth (length.percent 40)
-                    if err then style.color color.salmon else style.color color.gray
-                    style.whitespace.nowrap
-                    style.overflow.hidden
-                    style.textOverflow.ellipsis]
-                  prop.text ("["+txt)]]]]]
-        Html.td [prop.colSpan 4; prop.text "rest"; prop.style [style.textAlign.right]]]
+        prop.style [style.borderBottomStyle borderStyle.double]
+        prop.children [
+          topLeft
+          Html.td [
+            prop.text "controls"]
+          Html.td [
+            prop.colSpan 5
+            prop.style [style.padding 0; style.borderBottomColor color.black; style.borderBottomStyle borderStyle.double; style.borderLeftColor color.black]
+            prop.children [
+              Html.div [
+                prop.style [
+                  style.display.flex
+                  style.flexBasis.initial]
+                prop.children [
+                  Html.div [
+                    let stack = Sheet.findStackLeft es.Pos state.Sheet
+                    prop.text ("[" + (System.String.Join(" ", stack |> List.rev |> List.map printValue)))
+                    prop.style [
+                      style.textAlign.right
+                      style.flexGrow 0
+                      style.flexShrink 2
+                      style.paddingTop 6
+                      style.paddingLeft 6
+                      style.paddingRight 1
+                      style.marginLeft length.auto
+                      style.minWidth (length.percent 20)
+                      style.color color.gray
+                      style.whitespace.nowrap
+                      style.overflow.hidden
+                      style.textOverflow.ellipsis]]
+                  (editorInput
+                    [prop.placeholder "Input"]
+                    [ style.paddingLeft 1
+                      style.marginLeft length.auto
+                      style.flexGrow 0
+                      style.flexShrink 2
+                      style.borderLeftStyle borderStyle.dotted
+                      style.borderTopColor color.white
+                      style.borderBottomColor color.white
+                      style.borderLeftStyle borderStyle.dotted
+                      style.borderRightStyle borderStyle.dotted
+                      style.whitespace.nowrap
+                      style.overflow.hidden
+                      style.textOverflow.ellipsis]
+                    [] es dispatch)
+                  Html.div [
+                    let txt, err = printStack true es.Pos es.Cell
+                    prop.style [
+                      style.marginLeft length.auto
+                      style.flexGrow 2
+                      style.flexShrink 0
+                      style.paddingTop 6
+                      style.paddingRight 6
+                      style.minWidth (length.percent 40)
+                      if err then style.color color.salmon else style.color color.gray
+                      style.whitespace.nowrap
+                      style.overflow.hidden
+                      style.textOverflow.ellipsis]
+                    prop.text ("["+txt)]]]]]
+          Html.td [prop.colSpan 4; prop.text "rest"; prop.style [style.textAlign.right]]]]
       | _ ->
         Html.tr [
+          prop.style [style.borderBottomStyle borderStyle.double]
+          prop.children [
           topLeft
           Html.td [prop.text "controls"]
           Html.td [
-            prop.colSpan 3
+            prop.colSpan 5
             prop.children [
               Html.div [
                 prop.style [style.padding 0; style.display.flex]
                 prop.children [Html.div[]; Html.div []; Html.div []]
           ]]]
-          Html.td [prop.text "rest"; prop.colSpan 6; prop.style [style.textAlign.right]]]
+          Html.td [prop.colSpan 4; prop.style [style.textAlign.right]]]]
 
   let private colourStyles cell = [
       match Cell.value cell, cell.Type with
       | _, Child-> style.backgroundColor color.aliceBlue
       | Error _, _ ->
           style.color color.red
-          style.backgroundColor color.lightYellow
+          style.backgroundColor "#ffffed"
       | Nil, _ -> style.backgroundColor color.white
-      | _, _-> style.backgroundColor color.lightYellow]
+      | _, _-> style.backgroundColor "#ffffed"]
 
   let renderValue dispatch pos state =
     // TODO - should draw Paths as SVG on a canvas, others as str
@@ -414,22 +417,24 @@ module Application =
     let colLabel h =
       Html.th [
         prop.style [
-          style.backgroundColor "LightGray"
+          style.backgroundColor color.whiteSmoke
           style.borderBottomWidth 2
           match state.EditState with
           | Some {Pos = Position (c, _)} when c = h ->
-              style.borderBottomColor "RoyalBlue"
+              style.backgroundColor "#E8E8E8"
+              style.borderBottomColor color.royalBlue
           | _ -> ()
         ]
         prop.text (string h)]
     let rowLabel i =
       Html.th [
         prop.style [
-          style.backgroundColor "LightGray"
+          style.backgroundColor color.whiteSmoke
           style.borderRightWidth 2
           match state.EditState with
           | Some {Pos = Position (_, r)} when r = i ->
-              style.borderRightColor "RoyalBlue"
+              style.backgroundColor "#E8E8E8"
+              style.borderRightColor color.royalBlue
           | _ -> ()
         ]
         prop.text (string i)]
