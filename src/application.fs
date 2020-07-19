@@ -228,7 +228,9 @@ module Application =
   let renderCellEditor dispatch state =
     match state.EditState with
     | Some es ->
-      let tightLeft = (Sheet.find (Position.left es.Pos) state.Sheet).Input.Length > 0
+      let tightLeft =
+        (Sheet.find (Position.left es.Pos) state.Sheet).Input.Length > 0
+        && state.DisplayMode = Inputs
       Html.td [
         prop.style [style.padding 0]
         prop.children [editorInput [if tightLeft then style.paddingLeft 0] [Bulma.IsFocused] es dispatch]]
@@ -382,9 +384,10 @@ module Application =
       Html.th [
         prop.style [
           style.backgroundColor "LightGray"
+          style.borderBottomWidth 2
           match state.EditState with
           | Some {Pos = Position (c, _)} when c = h ->
-              style.borderBottomWidth 1; style.borderBottomColor "RoyalBlue"
+              style.borderBottomColor "RoyalBlue"
           | _ -> ()
         ]
         prop.text (string h)]
@@ -392,9 +395,10 @@ module Application =
       Html.th [
         prop.style [
           style.backgroundColor "LightGray"
+          style.borderRightWidth 2
           match state.EditState with
           | Some {Pos = Position (_, r)} when r = i ->
-              style.borderRightWidth 1; style.borderRightColor "RoyalBlue"
+              style.borderRightColor "RoyalBlue"
           | _ -> ()
         ]
         prop.text (string i)]
