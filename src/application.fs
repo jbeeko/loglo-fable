@@ -233,7 +233,7 @@ module Application =
         && state.DisplayMode = Inputs
       Html.td [
         prop.style [style.padding 0]
-        prop.children [editorInput [if tightLeft then style.paddingLeft 0] [Bulma.IsFocused] es dispatch]]
+        prop.children [editorInput [if tightLeft then style.paddingLeft 1] [Bulma.IsFocused] es dispatch]]
     | _ -> failwith "should not happen"
 
 
@@ -337,14 +337,14 @@ module Application =
   let renderInputs dispatch pos state =
     let cell = (Sheet.find pos state.Sheet)
     let txt, err = printStack false pos cell
-    let tightRight = (Sheet.find (Position.right pos) state.Sheet).Input.Length > 0
-    let tightLeft = (Sheet.find (Position.left pos) state.Sheet).Input.Length > 0
+    let contentToRight = (Sheet.find (Position.right pos) state.Sheet).Input.Length > 0
+    let contentToLeft = (Sheet.find (Position.left pos) state.Sheet).Input.Length > 0
     Html.td [
       prop.onClick (fun _ -> dispatch(StartEdit pos))
       prop.style (
         (colourStyles cell)@ [
-        if tightRight then style.paddingRight 1
-        if tightLeft  then style.paddingLeft 1])
+        if contentToRight then style.paddingRight 1
+        if contentToLeft  then style.paddingLeft 2])
       prop.children [
         Html.div [
           prop.style [style.display.flex]
@@ -370,6 +370,8 @@ module Application =
                   style.overflow.hidden
                   style.textOverflow.ellipsis]
                 prop.text (if txt.Length > 0 then ("["+txt) else "")]]]]]
+                //prop.text (printfn "CTR %b" contentToRight; if contentToRight then ("["+txt) else "")]]]]]
+
 
   let renderCell dispatch pos state =
     match state.EditState, state.DisplayMode with
