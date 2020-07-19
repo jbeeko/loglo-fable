@@ -384,7 +384,7 @@ module Application =
           style.backgroundColor "LightGray"
           match state.EditState with
           | Some {Pos = Position (c, _)} when c = h ->
-              style.borderBottomWidth 2; style.borderBottomColor "RoyalBlue"
+              style.borderBottomWidth 1; style.borderBottomColor "RoyalBlue"
           | _ -> ()
         ]
         prop.text (string h)]
@@ -394,7 +394,7 @@ module Application =
           style.backgroundColor "LightGray"
           match state.EditState with
           | Some {Pos = Position (_, r)} when r = i ->
-              style.borderRightWidth 2; style.borderRightColor "RoyalBlue"
+              style.borderRightWidth 1; style.borderRightColor "RoyalBlue"
           | _ -> ()
         ]
         prop.text (string i)]
