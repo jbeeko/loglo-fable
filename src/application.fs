@@ -326,7 +326,7 @@ module Application =
                       style.overflow.hidden
                       style.textOverflow.ellipsis]
                     prop.text ("["+txt)]]]]]
-          Html.td [prop.colSpan 4; prop.text "rest"; prop.style [style.textAlign.right]]]]
+          Html.td [prop.colSpan 4; prop.style [style.textAlign.right]]]]
       | _ ->
         Html.tr [
           prop.style [style.borderBottomStyle borderStyle.double]
