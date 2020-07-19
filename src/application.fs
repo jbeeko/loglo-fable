@@ -6,6 +6,12 @@
 //    with the edit field and then contiguous with the output.
 //  * Arrow down though readonly cells shits the sheet up
 
+// TODO - drawing glitches:
+// * show stack in empty field if there is content in next field to right
+// * tighten to left if tehre is an incoming stack
+// * in bar booth left and right should be tight and show dotted border
+// * in bar drop top and bottom border widths
+// * in bar add stack indicators "[" left and right
 
 // ----------------------------------------------------------------------------
 // LOGLO UI
@@ -155,7 +161,7 @@ module Application =
     | c, "" -> c
     | c, d -> sprintf "%s: %s" c d
 
-  let editorInput styles classes editState dispatch =
+  let editorInput props styles classes editState dispatch =
     // State machine for editing as follows:
     // * on initial click before typeing Focus = Initial
     //    - no insertion point
@@ -173,9 +179,10 @@ module Application =
     //    - ?
     // NOTE: all the above is true for both the edit bar and the in cell editor
     let cell, pos, focus = editState.Cell, editState.Pos, editState.Focus
-    Html.input [
+    Html.input ([
       prop.style ([
         style.borderRadius 0
+        style.boxShadow.none
         style.fontWeight 500
         if focus = Initial then
             (Interop.mkStyle "caret-color" "transparent")
@@ -223,7 +230,7 @@ module Application =
         dispatch (UpdateCell(pos, e))) // dispatch on value accepted
       prop.onInput (fun e ->            // dispatch on each keystroke
         let txt = (e.currentTarget :?> Browser.Types.HTMLInputElement).value
-        dispatch(UpdateEditValue(pos, txt)))]
+        dispatch(UpdateEditValue(pos, txt)))] @ props)
 
   let renderCellEditor dispatch state =
     match state.EditState with
@@ -233,7 +240,13 @@ module Application =
         && state.DisplayMode = Inputs
       Html.td [
         prop.style [style.padding 0]
-        prop.children [editorInput [if tightLeft then style.paddingLeft 1] [Bulma.IsFocused] es dispatch]]
+        prop.children [editorInput
+          []
+          [if tightLeft then
+            style.paddingLeft 1
+            style.borderLeftStyle borderStyle.dotted
+          ]
+          [Bulma.IsFocused] es dispatch]]
     | _ -> failwith "should not happen"
 
 
@@ -255,10 +268,12 @@ module Application =
     | Some es ->
       Html.tr [
         topLeft
-        Html.td [prop.text "controls"]
+        Html.td [
+          prop.style [style.borderRightColor color.black]
+          prop.text "controls"]
         Html.td [
           prop.colSpan 5
-          prop.style [style.padding 0]
+          prop.style [style.padding 0; style.borderColor color.black; style.borderLeftColor color.black]
           prop.children [
             Html.div [
               prop.style [
@@ -267,35 +282,39 @@ module Application =
               prop.children [
                 Html.div [
                   let stack = Sheet.findStackLeft es.Pos state.Sheet
-                  prop.text (System.String.Join(" ", stack |> List.rev |> List.map printValue))
+                  prop.text ("[" + (System.String.Join(" ", stack |> List.rev |> List.map printValue)))
                   prop.style [
                     style.textAlign.right
                     style.paddingTop 6
                     style.paddingLeft 6
+                    style.paddingRight 1
                     style.minWidth (length.percent 15)
                     style.color color.gray
-                    style.fontStyle.italic
                     style.whitespace.nowrap
                     style.overflow.hidden
                     style.textOverflow.ellipsis]]
                 Html.div [
-                  // prop.style [
-                  //   style.flexGrow 5]
-                  prop.children [editorInput [] [] es dispatch]]
+                  prop.children [
+                    editorInput
+                      [prop.placeholder "Input"]
+                      [ style.paddingLeft 1
+                        style.borderLeftStyle borderStyle.dotted
+                        style.borderTopColor color.white
+                        style.borderBottomColor color.white
+                        style.borderLeftStyle borderStyle.dotted
+                        style.borderRightStyle borderStyle.dotted]
+                      [] es dispatch
+                    ]]
                 Html.div [
                   let txt, err = printStack true es.Pos es.Cell
                   prop.style [
-                    // style.flexBasis (length.percent 100)
-                    // style.flexShrink 10
-                    // style.flexGrow 1
                     style.paddingTop 6
                     style.paddingRight 6
                     if err then style.color color.salmon else style.color color.gray
-                    style.fontStyle.italic
                     style.whitespace.nowrap
                     style.overflow.hidden
                     style.textOverflow.ellipsis]
-                  prop.text txt]]]]]
+                  prop.text ("["+txt)]]]]]
         Html.td [prop.colSpan 4; prop.text "rest"; prop.style [style.textAlign.right]]]
       | _ ->
         Html.tr [
