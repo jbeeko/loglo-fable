@@ -183,7 +183,7 @@ module Application =
       prop.style ([
         style.borderRadius 0
         style.boxShadow.none
-        style.fontWeight 500
+        style.fontWeight 600
         if focus = Initial then
             (Interop.mkStyle "caret-color" "transparent")
             style.cursor.defaultCursor]@styles)
@@ -285,31 +285,41 @@ module Application =
                   prop.text ("[" + (System.String.Join(" ", stack |> List.rev |> List.map printValue)))
                   prop.style [
                     style.textAlign.right
+                    style.flexGrow 0
+                    style.flexShrink 2
                     style.paddingTop 6
                     style.paddingLeft 6
                     style.paddingRight 1
-                    style.minWidth (length.percent 15)
+                    style.marginLeft length.auto
+                    style.minWidth (length.percent 20)
                     style.color color.gray
                     style.whitespace.nowrap
                     style.overflow.hidden
                     style.textOverflow.ellipsis]]
-                Html.div [
-                  prop.children [
-                    editorInput
-                      [prop.placeholder "Input"]
-                      [ style.paddingLeft 1
-                        style.borderLeftStyle borderStyle.dotted
-                        style.borderTopColor color.white
-                        style.borderBottomColor color.white
-                        style.borderLeftStyle borderStyle.dotted
-                        style.borderRightStyle borderStyle.dotted]
-                      [] es dispatch
-                    ]]
+                (editorInput
+                  [prop.placeholder "Input"]
+                  [ style.paddingLeft 1
+                    style.marginLeft length.auto
+                    style.flexGrow 0
+                    style.flexShrink 2
+                    style.borderLeftStyle borderStyle.dotted
+                    style.borderTopColor color.white
+                    style.borderBottomColor color.white
+                    style.borderLeftStyle borderStyle.dotted
+                    style.borderRightStyle borderStyle.dotted
+                    style.whitespace.nowrap
+                    style.overflow.hidden
+                    style.textOverflow.ellipsis]
+                  [] es dispatch)
                 Html.div [
                   let txt, err = printStack true es.Pos es.Cell
                   prop.style [
+                    style.marginLeft length.auto
+                    style.flexGrow 2
+                    style.flexShrink 0
                     style.paddingTop 6
                     style.paddingRight 6
+                    style.minWidth (length.percent 40)
                     if err then style.color color.salmon else style.color color.gray
                     style.whitespace.nowrap
                     style.overflow.hidden
