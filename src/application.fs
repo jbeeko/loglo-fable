@@ -231,7 +231,7 @@ module Application =
       let tightLeft = (Sheet.find (Position.left es.Pos) state.Sheet).Input.Length > 0
       Html.td [
         prop.style [style.padding 0]
-        prop.children [editorInput [if tightLeft then style.paddingLeft 3] [Bulma.IsFocused] es dispatch]]
+        prop.children [editorInput [if tightLeft then style.paddingLeft 1] [Bulma.IsFocused] es dispatch]]
     | _ -> failwith "should not happen"
 
 
@@ -341,8 +341,8 @@ module Application =
       prop.onClick (fun _ -> dispatch(StartEdit pos))
       prop.style (
         (colourStyles cell)@ [
-        if tightRight then style.paddingRight 2
-        if tightLeft  then style.paddingLeft 4])
+        if tightRight then style.paddingRight 1
+        if tightLeft  then style.paddingLeft 1])
       prop.children [
         Html.div [
           prop.style [style.display.flex]
