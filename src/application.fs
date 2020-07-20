@@ -12,6 +12,7 @@
 // * in bar booth left and right should be tight and show dotted border
 // * in bar drop top and bottom border widths
 // * in bar add stack indicators "[" left and right
+// * if an Err is the input to an operation such as +, the message should just be Err
 
 // ----------------------------------------------------------------------------
 // LOGLO UI

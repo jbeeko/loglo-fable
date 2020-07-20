@@ -4,6 +4,8 @@
 //  * need to add a tests that takes a map of the cells and then builds a new shee
 //    adding the values in random order and ensuring the same value results.
 //  * editing child cells should be an error
+//  * errors at the top of the stack are not shown. So 4 + 3 has an error on the stack
+//    but the value is show as 3 without an error
 
 // ----------------------------------------------------------------------------
 // LOGLO EVALUATOR
