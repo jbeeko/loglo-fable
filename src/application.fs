@@ -333,11 +333,10 @@ module Application =
           Html.td [prop.colSpan 4; prop.style [style.textAlign.right]]]]
 
   let private colourStyles cell = [
+      if cell.Stack |> List.exists (fun v -> match v with | Error _ -> true | _ -> false)
+      then style.color color.red
       match Cell.value cell, cell.Type with
       | _, Child-> style.backgroundColor color.aliceBlue
-      | Error _, _ ->
-          style.color color.red
-          style.backgroundColor "#ffffed"
       | Nil, _ -> style.backgroundColor color.white
       | _, _-> style.backgroundColor "#ffffed"]
 
