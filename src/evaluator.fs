@@ -6,6 +6,8 @@
 //  * editing child cells should be an error
 //  * errors at the top of the stack are not shown. So 4 + 3 has an error on the stack
 //    but the value is show as 3 without an error
+// *  cells that reference code blocks don't depend on them. So if the codeblock is edited
+//    the "dendant cells are not updated."
 
 // ----------------------------------------------------------------------------
 // LOGLO EVALUATOR
