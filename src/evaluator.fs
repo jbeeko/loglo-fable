@@ -6,8 +6,6 @@
 //  * editing child cells should be an error
 //  * errors at the top of the stack are not shown. So 4 + 3 has an error on the stack
 //    but the value is show as 3 without an error
-// *  cells that reference code blocks don't depend on them. So if the codeblock is edited
-//    the "dendant cells are not updated."
 
 // ----------------------------------------------------------------------------
 // LOGLO EVALUATOR
@@ -322,7 +320,7 @@ module Evaluator =
               // If a reference to a code block, recursivly evelaute otherwise
               // push the value.
               match Cell.value refCell with
-              | Code exprList -> evaluateExprs exprList pos sheet
+              | Code exprList -> evaluateExprs exprList pos newSheet
               | v -> push v pos newSheet
     | IndirectRef ->
         let (Position (c, i)) = (up pos)

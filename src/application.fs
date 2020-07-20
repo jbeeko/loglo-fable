@@ -299,7 +299,7 @@ module Application =
                       style.overflow.hidden
                       style.textOverflow.ellipsis]]
                   (editorInput
-                    [prop.placeholder "Input"]
+                    [prop.placeholder " Input"]
                     [ style.paddingLeft 1
                       style.marginLeft length.auto
                       style.flexGrow 0
