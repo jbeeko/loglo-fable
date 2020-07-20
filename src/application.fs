@@ -1,18 +1,8 @@
 //TODO:
-// *  row select
-// *  row insert
-// *  edit bar editor should not get blue focus
-// *  edit bar should be reactive columns so the input stack is continguous
-//    with the edit field and then contiguous with the output.
-//  * Arrow down though readonly cells shits the sheet up
-
-// TODO - drawing glitches:
+// * row select
+// * row insert
+// * Arrow down though readonly cells shits the sheet up
 // * show stack in empty field if there is content in next field to right
-// * tighten to left if tehre is an incoming stack
-// * in bar booth left and right should be tight and show dotted border
-// * in bar drop top and bottom border widths
-// * in bar add stack indicators "[" left and right
-// * if an Err is the input to an operation such as +, the message should just be Err
 
 // ----------------------------------------------------------------------------
 // LOGLO UI
@@ -34,7 +24,6 @@ module Application =
 
   type EditState = {
     Pos: Position
-    Cell: Cell
     Focus: EditMode
   }
 
@@ -63,7 +52,6 @@ module Application =
     match msg with
     | StartEdit pos ->
       if Sheet.contains pos state.Sheet then
-        let cell = Sheet.find pos state.Sheet
         let state' =
           match state.EditState with
           | Some es when es.Pos = pos && es.Focus <> FullFocus ->
@@ -71,9 +59,9 @@ module Application =
           | Some es when es.Pos = pos && es.Focus = FullFocus -> state
           | Some es when es.Pos <> pos ->
             printfn "%i" state.Sheets.Length
-            {state with Sheets = state.Sheet::state.Sheets; EditState = Some {Pos = pos; Cell = cell; Focus = Initial}}
+            {state with Sheets = state.Sheet::state.Sheets; EditState = Some {Pos = pos; Focus = Initial}}
           | _  ->
-            { state with EditState = Some {Pos = pos; Cell = cell; Focus = Initial} }
+            { state with EditState = Some {Pos = pos; Focus = Initial} }
         state', Cmd.Empty
       else state, Cmd.Empty
     | EndEdit ->
@@ -83,18 +71,16 @@ module Application =
       | Inputs -> {state with DisplayMode = Values }, Cmd.Empty
       | Values -> {state with DisplayMode = Inputs}, Cmd.Empty
     | UpdateCell (pos, value) ->
-        let sheet = Evaluator.recalc pos state.Sheet false value
+        let sheet = Evaluator.recalc pos state.Sheet value
         {state with Sheet = sheet}, Cmd.Empty
     | UpdateEditValue (pos, value) ->
-        let cell =
-          Evaluator.recalc pos state.Sheet true value
-          |> Sheet.find pos
+        let sheet = Evaluator.recalc pos state.Sheet value
         let editState =
           match state.EditState with
-          | Some es when es.Focus = Initial -> Some {es with Focus = PartialFocus; Cell = {cell with Input = value}}
-          | Some es -> Some {es with Cell = {cell with Input = value}}
+          | Some es when es.Focus = Initial -> Some {es with Focus = PartialFocus}
+          | Some es -> Some es
           | None -> None
-        {state with EditState = editState}, Cmd.Empty
+        {state with Sheet = sheet; EditState = editState}, Cmd.Empty
 
 
   // ----------------------------------------------------------------------------
@@ -162,7 +148,7 @@ module Application =
     | c, "" -> c
     | c, d -> sprintf "%s: %s" c d
 
-  let editorInput props styles classes editState dispatch =
+  let editorInput props styles classes editState cell dispatch =
     // State machine for editing as follows:
     // * on initial click before typeing Focus = Initial
     //    - no insertion point
@@ -179,7 +165,7 @@ module Application =
     // * on doubleClick
     //    - ?
     // NOTE: all the above is true for both the edit bar and the in cell editor
-    let cell, pos, focus = editState.Cell, editState.Pos, editState.Focus
+    let pos, focus = editState.Pos, editState.Focus
     Html.input ([
       prop.style ([
         style.borderRadius 0
@@ -239,6 +225,7 @@ module Application =
       let tightLeft =
         (Sheet.find (Position.left es.Pos) state.Sheet).Input.Length > 0
         && state.DisplayMode = Inputs
+      let cell = Sheet.find es.Pos state.Sheet
       Html.td [
         prop.style [style.padding 0]
         prop.children [editorInput
@@ -247,11 +234,12 @@ module Application =
             style.paddingLeft 1
             style.borderLeftStyle borderStyle.dotted
           ]
-          [Bulma.IsFocused] es dispatch]]
+          [Bulma.IsFocused] es cell dispatch]]
     | _ -> failwith "should not happen"
 
 
-  let printStack showErrMsg pos cell =
+  let printStack showErrMsg pos state =
+    let cell = Sheet.find pos state.Sheet
     let stack = match cell.Input.Trim() with | "" -> [] | _ -> cell.Stack
     let txts =
       stack |> List.rev
@@ -267,6 +255,7 @@ module Application =
   let renderEditBar dispatch state =
     match state.EditState with
     | Some es ->
+      let cell = Sheet.find es.Pos state.Sheet
       Html.tr [
         prop.style [style.borderBottomStyle borderStyle.double]
         prop.children [
@@ -312,9 +301,9 @@ module Application =
                       style.whitespace.nowrap
                       style.overflow.hidden
                       style.textOverflow.ellipsis]
-                    [] es dispatch)
+                    [] es cell dispatch)
                   Html.div [
-                    let txt, err = printStack true es.Pos es.Cell
+                    let txt, err = printStack true es.Pos state
                     prop.style [
                       style.marginLeft length.auto
                       style.flexGrow 2
@@ -369,7 +358,7 @@ module Application =
 
   let renderInputs dispatch pos state =
     let cell = (Sheet.find pos state.Sheet)
-    let txt, err = printStack false pos cell
+    let txt, err = printStack false pos state
     let contentToRight = (Sheet.find (Position.right pos) state.Sheet).Input.Length > 0
     let contentToLeft = (Sheet.find (Position.left pos) state.Sheet).Input.Length > 0
     Html.td [

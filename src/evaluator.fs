@@ -406,12 +406,10 @@ module Evaluator =
 
   // Public API - insert a new cell and either re-calculate the sheet or
   // just the active cell.
-  let recalc pos sheet cellOnly input =
+  let recalc pos sheet input =
     let update pos sheet input =
       let deps =
         if contains (left pos) sheet then [left pos]
         else []
       upsert pos sheet {Input = input; Stack = []; DependsOn = deps; Type = Input}
-    if cellOnly
-      then parseEvaluateCell pos (update pos sheet input)
-      else basicRecalc (Set.empty) pos (update pos sheet input)
+    basicRecalc (Set.empty) pos (update pos sheet input)
