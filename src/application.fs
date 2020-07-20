@@ -240,7 +240,7 @@ module Application =
 
   let printStack showErrMsg pos state =
     let cell = Sheet.find pos state.Sheet
-    let stack = match cell.Input.Trim() with | "" -> [] | _ -> cell.Stack
+    let stack = match cell.Input.Trim() with | "" -> Sheet.findStackLeft pos state.Sheet | _ -> cell.Stack
     let txts =
       stack |> List.rev
       |> List.map (fun v ->
@@ -390,7 +390,8 @@ module Application =
                   style.whitespace.nowrap
                   style.overflow.hidden
                   style.textOverflow.ellipsis]
-                prop.text (if txt.Length > 0 then ("["+txt) else "")]]]]]
+                prop.text (if contentToRight || cell.Input.Length > 0 then ("["+txt) else "")]]]]]
+                //prop.text (if txt.Length > 0 then ("["+txt) else "")]]]]]
                 //prop.text (printfn "CTR %b" contentToRight; if contentToRight then ("["+txt) else "")]]]]]
 
 

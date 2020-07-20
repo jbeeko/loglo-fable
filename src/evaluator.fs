@@ -6,6 +6,7 @@
 //  * editing child cells should be an error
 //  * errors at the top of the stack are not shown. So 4 + 3 has an error on the stack
 //    but the value is show as 3 without an error
+//  * Refresh due to changes to left are not propogated accross blank cells.
 
 // ----------------------------------------------------------------------------
 // LOGLO EVALUATOR
