@@ -36,7 +36,6 @@ module Application =
     Pos: Position
     Cell: Cell
     Focus: EditMode
-    Orig: Sheet
   }
 
   type DisplayMode =
@@ -45,6 +44,7 @@ module Application =
 
   type State = {
     Sheet: Sheet
+    Sheets: Sheet list
     EditState: EditState option
     DisplayMode: DisplayMode
   }
@@ -54,7 +54,7 @@ module Application =
   // ----------------------------------------------------------------------------
   type Message =
     | StartEdit of Position
-    | EndEdit of bool
+    | EndEdit
     | ToggleDisplayMode
     | UpdateCell of Position * string
     | UpdateEditValue of Position * string
@@ -69,15 +69,15 @@ module Application =
           | Some es when es.Pos = pos && es.Focus <> FullFocus ->
             { state with EditState = Some {es with Focus = FullFocus} }
           | Some es when es.Pos = pos && es.Focus = FullFocus -> state
+          | Some es when es.Pos <> pos ->
+            printfn "%i" state.Sheets.Length
+            {state with Sheets = state.Sheet::state.Sheets; EditState = Some {Pos = pos; Cell = cell; Focus = Initial}}
           | _  ->
-            { state with EditState = Some {Pos = pos; Cell = cell; Orig = state.Sheet; Focus = Initial} }
+            { state with EditState = Some {Pos = pos; Cell = cell; Focus = Initial} }
         state', Cmd.Empty
       else state, Cmd.Empty
-    | EndEdit cancel ->
-      match state.EditState, cancel with
-      | Some es, true ->
-        {state with Sheet = es.Orig; EditState = None}, Cmd.Empty
-      | _, _ -> state, Cmd.Empty
+    | EndEdit ->
+        {state with Sheet = state.Sheets.Head; EditState = None}, Cmd.Empty
     | ToggleDisplayMode ->
       match state.DisplayMode with
       | Inputs -> {state with DisplayMode = Values }, Cmd.Empty
@@ -196,7 +196,7 @@ module Application =
       prop.onKeyDown (fun e ->
         match e.key with
         | "`" when e.ctrlKey -> dispatch ToggleDisplayMode
-        | "Escape" -> dispatch (EndEdit true)
+        | "Escape" -> dispatch EndEdit
 
         | "Enter" when e.shiftKey ->dispatch(StartEdit (Position.up pos))
         | "Enter" -> dispatch(StartEdit (Position.down pos))
@@ -467,11 +467,13 @@ module Application =
     ]
 
   let initialize () =
-    { Sheet =
-        { Cols = ['A' .. 'J']
-          Rows = [1 .. 20]
-          Definitions = Map.empty
-          Cells = Map.empty }
+    let empty =
+      { Cols = ['A' .. 'J']
+        Rows = [1 .. 20]
+        Definitions = Map.empty
+        Cells = Map.empty }
+    { Sheet = empty
+      Sheets = [empty]
       DisplayMode = Values
       EditState = None}, Cmd.Empty
 
