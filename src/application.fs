@@ -36,7 +36,7 @@ module Application =
     Pos: Position
     Cell: Cell
     Focus: EditMode
-    Orig: Cell
+    Orig: Sheet
   }
 
   type DisplayMode =
@@ -70,13 +70,13 @@ module Application =
             { state with EditState = Some {es with Focus = FullFocus} }
           | Some es when es.Pos = pos && es.Focus = FullFocus -> state
           | _  ->
-            { state with EditState = Some {Pos = pos; Cell = cell; Orig = cell; Focus = Initial} }
+            { state with EditState = Some {Pos = pos; Cell = cell; Orig = state.Sheet; Focus = Initial} }
         state', Cmd.Empty
       else state, Cmd.Empty
     | EndEdit cancel ->
       match state.EditState, cancel with
       | Some es, true ->
-        {state with Sheet = Sheet.upsert es.Pos state.Sheet es.Orig; EditState = None}, Cmd.Empty
+        {state with Sheet = es.Orig; EditState = None}, Cmd.Empty
       | _, _ -> state, Cmd.Empty
     | ToggleDisplayMode ->
       match state.DisplayMode with

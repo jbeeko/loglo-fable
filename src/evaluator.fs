@@ -6,11 +6,6 @@
 //  * editing child cells should be an error
 //  * errors at the top of the stack are not shown. So 4 + 3 has an error on the stack
 //    but the value is show as 3 without an error
-//  * side effects in sheet are not reversed on escape. For example doing a fill will not
-//    undo the creation of the down filled cells. Also change the value of a cell being reffed
-//    will not be undone on esc. Probably because the edit state does not include a copy of
-//    the sheet but the actual one. Or perhaps just a refresh is needed. Could look at sheet
-//    after a canceled fill and see if the filled cells are actaully filled.
 
 // ----------------------------------------------------------------------------
 // LOGLO EVALUATOR
