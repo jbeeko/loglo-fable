@@ -8,7 +8,9 @@
 //    but the value is show as 3 without an error
 //  * side effects in sheet are not reversed on escape. For example doing a fill will not
 //    undo the creation of the down filled cells. Also change the value of a cell being reffed
-//    will not be undone on esc.
+//    will not be undone on esc. Probably because the edit state does not include a copy of
+//    the sheet but the actual one. Or perhaps just a refresh is needed. Could look at sheet
+//    after a canceled fill and see if the filled cells are actaully filled.
 
 // ----------------------------------------------------------------------------
 // LOGLO EVALUATOR
