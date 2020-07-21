@@ -31,8 +31,8 @@ module Domain =
 
 
   type Point = {x: int; y: int}
-  type Path = Point list
-  type Paths = Path list
+  type Path = Path of Point list
+  type Paths = Paths of Path list
 
   type Value =
     | Binding of string
@@ -278,6 +278,12 @@ module Domain =
         | _ -> Error (pos, (InvalidParams ("neg", [Some ((Int 0), "")], [z])))
       unary pos sheet func
 
+    // Geometry Primatives
+    let line pos sheet =
+      let c = find pos sheet
+      let v = Paths [Path [{x=0; y=0}; {x=1; y=0}]]
+      upsert pos sheet (Cell.push  v c)
+
 
 // ----------------------------------------------------------------------------
 // Evaluator
@@ -366,7 +372,7 @@ module Evaluator =
     // Geometry primatives
     | "close" -> error (NotImplemented "close") pos sheet
     | "intersect" -> error (NotImplemented "intersect") pos sheet
-    | "line" -> error (NotImplemented "line") pos sheet
+    | "line" -> line pos sheet
     | "rotate" -> error (NotImplemented "rotate") pos sheet
     | "scale" -> error (NotImplemented "scale") pos sheet
     | "union" -> error (NotImplemented "union") pos sheet

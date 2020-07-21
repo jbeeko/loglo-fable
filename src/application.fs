@@ -1,8 +1,8 @@
 //TODO:
 // * row select
 // * row insert
+// BUGS
 // * Arrow down though readonly cells shits the sheet up
-// * show stack in empty field if there is content in next field to right
 
 // ----------------------------------------------------------------------------
 // LOGLO UI
@@ -97,7 +97,7 @@ module Application =
       | Binding s, _ -> "def "+cmnt
       | Code l, _ -> "{} "+cmnt
       | Paths l, _ -> "Paths "+cmnt
-      | Error (p,e), _ -> "Error "+cmnt
+      | Error (p,e), _ -> "Err "+cmnt
       | Nil, _ -> "nil "+cmnt).Trim()
 
   let printValue v =
@@ -106,9 +106,9 @@ module Application =
     | Text s -> sprintf "\"%s\"" s
     | Name s -> sprintf ":%s" s
     | Binding s -> sprintf "%s" s
-    | Code l -> "{}"
-    | Paths l -> sprintf "%i Paths" l.Length
-    | Error (p,e) -> "Err"
+    | Code _ -> "{}"
+    | Paths _ -> sprintf "SVG"
+    | Error _ -> "Err"
     | Nil -> "nil"
 
   let errorCodeAndComment (_, e) =
@@ -355,44 +355,63 @@ module Application =
         | Nil -> ""
         | v -> printValue v)]
 
+
+  let renderInputDivs (txtLeft:string) (txtRight:string) err = [
+    Html.div [
+      prop.style [style.display.flex]
+      prop.children [
+        Html.div [
+          prop.style [
+            style.flexGrow 2
+            style.flexShrink 0
+            style.paddingRight 0
+            style.fontWeight 500
+            style.whitespace.nowrap
+            style.overflow.hidden
+            style.textOverflow.ellipsis]
+          prop.text txtLeft]
+        Html.div [
+            prop.style [
+              style.marginLeft length.auto
+              style.flexShrink 2;
+              style.textAlign.right
+              if err then style.color color.salmon else style.color color.gray
+              style.fontStretch.semiCondensed
+              style.whitespace.nowrap
+              style.overflow.hidden
+              style.textOverflow.ellipsis]
+            prop.text txtRight]]]]
+
+  let renderSVGDiv value =
+    Html.div [
+      prop.style [style.padding 0]
+      prop.children [
+        match value with
+        | Paths _ ->
+          Html.svg [
+            prop.style [style.padding 0]
+            prop.children [
+              Html.line [prop.x1 0; prop.y1 0; prop.x2 100; prop.y2 100; prop.stroke color.black; prop.strokeWidth 3]
+            ]]
+        | _ -> ()
+      ]
+    ]
+
   let renderInputs dispatch pos state =
     let cell = (Sheet.find pos state.Sheet)
     let txt, err = printStack false pos state
     let contentToRight = (Sheet.find (Position.right pos) state.Sheet).Input.Length > 0
     let contentToLeft = (Sheet.find (Position.left pos) state.Sheet).Input.Length > 0
+    let txtRight = if contentToRight || cell.Input.Length > 0 then ("["+txt) else ""
+    let txtLeft = cell.Input
     Html.td [
       prop.onClick (fun _ -> dispatch(StartEdit pos))
       prop.style (
         (colourStyles cell)@ [
         if contentToRight then style.paddingRight 1
         if contentToLeft  then style.paddingLeft 2])
-      prop.children [
-        Html.div [
-          prop.style [style.display.flex]
-          prop.children [
-            Html.div [
-              prop.style [
-                style.flexGrow 2
-                style.flexShrink 0
-                style.paddingRight 0
-                style.fontWeight 500
-                style.whitespace.nowrap
-                style.overflow.hidden
-                style.textOverflow.ellipsis]
-              prop.text cell.Input]
-            Html.div [
-                prop.style [
-                  style.marginLeft length.auto
-                  style.flexShrink 2;
-                  style.textAlign.right
-                  if err then style.color color.salmon else style.color color.gray
-                  style.fontStretch.semiCondensed
-                  style.whitespace.nowrap
-                  style.overflow.hidden
-                  style.textOverflow.ellipsis]
-                prop.text (if contentToRight || cell.Input.Length > 0 then ("["+txt) else "")]]]]]
-                //prop.text (if txt.Length > 0 then ("["+txt) else "")]]]]]
-                //prop.text (printfn "CTR %b" contentToRight; if contentToRight then ("["+txt) else "")]]]]]
+      prop.children (
+        (renderInputDivs txtLeft txtRight err)@[renderSVGDiv (Cell.value cell)])]
 
 
   let renderCell dispatch pos state =
