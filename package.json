@@ -9,7 +9,7 @@
     },
     "dependencies": {
         "bulma": "^0.9.0",
-        "feliz": "0.0.17",
+        "feliz": "0.0.43",
         "react": "^16.13.1",
         "react-dom": "^16.13.1",
         "remotedev": "^0.2.9"
